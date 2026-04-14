@@ -31,6 +31,13 @@ npm run dev      # development (nodemon)
 npm start        # production
 ```
 
+## Déroulement du projet
+
+Comment avez-vous décomposé le projet ? Quelles ont été les phases ?
+Qui s’est occupé de quoi ? Avez-vous utiliser une stratégie particulière pour répartir les tâches?
+Comment avez-vous géré votre temps ? Avez-vous défini des priorités ?
+Avez-vous défini une stratégie pour vous documenter 
+
 ---
 
 ## API Reference
@@ -141,3 +148,4 @@ POST /api/vote
   "value": 1
 }
 ```
+

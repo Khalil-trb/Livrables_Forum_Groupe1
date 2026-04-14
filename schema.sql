@@ -79,12 +79,14 @@ CREATE TABLE comments (
 
 -- Votes table (for threads and comments)
 CREATE TABLE votes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  target_type ENUM('thread', 'comment') NOT NULL,
-  target_id INT NOT NULL,
-  value TINYINT NOT NULL CHECK (value IN (1, -1)),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY unique_vote (user_id, target_type, target_id),
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    target_type ENUM('thread', 'comment') NOT NULL,
+    target_id INT NOT NULL,
+    value TINYINT NOT NULL CHECK (value IN (1 , - 1)),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_vote (user_id , target_type , target_id),
+    FOREIGN KEY (user_id)
+        REFERENCES users (id)
+        ON DELETE CASCADE
+)
