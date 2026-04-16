@@ -1,0 +1,18 @@
+nav {
+    display: flex;
+    justify-content: space-between;
+    background: black;
+    color: white;
+    padding: 10px;
+}
+
+.logo img {
+    width: 5vh;
+    height: auto;
+}
+
+.topics{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
