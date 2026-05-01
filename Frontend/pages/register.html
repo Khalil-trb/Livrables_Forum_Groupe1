@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — Forum</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="../index.html">FORUM</a>
+  <div class="nav-links">
+    <a href="../index.html">← Back</a>
+  </div>
+</nav>
+
+<div class="container" style="max-width:420px;">
+  <div style="padding-top:3rem;">
+    <div class="page-header">
+      <h2>Create an account</h2>
+      <p>Join the conversation today</p>
+    </div>
+
+    <div class="card">
+      <div id="alert"></div>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="johndoe" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Min. 6 characters" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="register()">Create Account</button>
+    </div>
+
+    <p style="text-align:center; margin-top:1rem; font-size:0.875rem; color:var(--text-muted);">
+      Already registered? <a href="login.html">Login</a>
+    </p>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  if (auth.isLoggedIn()) window.location.href = '../index.html';
+
+  async function register() {
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const alertEl = document.getElementById('alert');
+    alertEl.innerHTML = '';
+
+    if (!username || !email || !password) {
+      alertEl.innerHTML = '<div class="alert alert-error">Please fill in all fields.</div>';
+      return;
+    }
+    if (password.length < 6) {
+      alertEl.innerHTML = '<div class="alert alert-error">Password must be at least 6 characters.</div>';
+      return;
+    }
+    try {
+      const data = await api.post('/auth/register', { username, email, password });
+      auth.login(data.token, data.user);
+      window.location.href = '../index.html';
+    } catch (e) {
+      alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+</script>
+</body>
+</html>

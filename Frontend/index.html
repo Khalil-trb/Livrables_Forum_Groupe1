@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forum</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="index.html">FORUM</a>
+  <div class="nav-links" id="nav-links">
+    <a href="index.html">Threads</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<div class="wide-container">
+  <div class="hero">
+    <h1>The <span>Discussion</span> Starts Here</h1>
+    <p>Browse threads, share ideas, and join the conversation.</p>
+  </div>
+
+  <div class="layout">
+    <!-- MAIN -->
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+        <div style="display:flex; gap:0.5rem;">
+          <input id="search-input" type="text" placeholder="Search threads…" style="width:220px; padding:0.5rem 0.8rem; font-size:0.85rem;" />
+          <button class="btn btn-ghost btn-sm" onclick="loadThreads()">Search</button>
+        </div>
+        <a href="pages/new-thread.html" class="btn btn-primary btn-sm" id="new-thread-btn" style="display:none;">+ New Thread</a>
+      </div>
+
+      <div id="thread-list"><div class="loading">Loading threads…</div></div>
+
+      <div style="display:flex; gap:0.5rem; justify-content:center; margin-top:2rem;" id="pagination"></div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div>
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.75rem;">Categories</div>
+        <div id="category-list"><div class="loading" style="padding:1rem 0;">…</div></div>
+      </div>
+      <div class="card">
+        <div style="font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.75rem;">Tags</div>
+        <div id="tag-list"><div class="loading" style="padding:1rem 0;">…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let currentPage = 1;
+  let activeCategory = '';
+  let activeTag = '';
+
+  function renderNav() {
+    const user = auth.getUser();
+    const navAuth = document.getElementById('nav-auth');
+    const newBtn = document.getElementById('new-thread-btn');
+    if (user) {
+      navAuth.innerHTML = `<span style="color:var(--text-dim);font-size:0.85rem;">${user.username}</span> <a href="#" onclick="auth.logout()">Logout</a>`;
+      newBtn.style.display = 'inline-flex';
+    } else {
+      navAuth.innerHTML = `<a href="pages/login.html">Login</a> <a href="pages/register.html" class="btn btn-primary btn-sm">Register</a>`;
+    }
+  }
+
+  async function loadThreads(page = 1) {
+    currentPage = page;
+    const search = document.getElementById('search-input').value;
+    let url = `/threads?page=${page}&limit=15`;
+    if (activeCategory) url += `&category=${activeCategory}`;
+    if (activeTag) url += `&tag=${activeTag}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+
+    const list = document.getElementById('thread-list');
+    list.innerHTML = '<div class="loading">Loading…</div>';
+    try {
+      const data = await api.get(url);
+      if (!data.threads.length) { list.innerHTML = '<div class="empty">No threads found.</div>'; return; }
+      list.innerHTML = data.threads.map(t => `
+        <div class="thread-item ${t.is_pinned ? 'pinned' : ''}">
+          <div>
+            <div class="thread-flags">
+              ${t.is_pinned ? '<span class="flag flag-pinned">📌 Pinned</span>' : ''}
+              ${t.is_locked ? '<span class="flag flag-locked">🔒 Locked</span>' : ''}
+            </div>
+            <div class="thread-title"><a href="pages/thread.html?slug=${t.slug}">${t.title}</a></div>
+            <div class="thread-meta">
+              <span>by <strong>${t.author_name}</strong></span>
+              <span class="category-pill">${t.category_name}</span>
+              <span>${new Date(t.created_at).toLocaleDateString()}</span>
+              <span>💬 ${t.comment_count}</span>
+              <span>👁 ${t.view_count}</span>
+            </div>
+          </div>
+          <div class="thread-stats">
+            <span class="score">${t.vote_score > 0 ? '+' : ''}${t.vote_score}</span>
+            <span>votes</span>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      list.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+
+  async function loadCategories() {
+    try {
+      const data = await api.get('/categories');
+      const el = document.getElementById('category-list');
+      el.innerHTML = `<div style="margin-bottom:0.4rem;"><a href="#" onclick="filterCategory('')" style="font-size:0.85rem; color:var(--text-dim);">All categories</a></div>` +
+        data.categories.map(c => `
+          <div style="margin-bottom:0.3rem; display:flex; justify-content:space-between; align-items:center;">
+            <a href="#" onclick="filterCategory('${c.slug}')" style="font-size:0.85rem; color:var(--text-dim);">${c.name}</a>
+            <span style="font-size:0.72rem; color:var(--text-muted); font-family:var(--font-mono);">${c.thread_count}</span>
+          </div>`).join('');
+    } catch {}
+  }
+
+  async function loadTags() {
+    try {
+      const data = await api.get('/tags');
+      document.getElementById('tag-list').innerHTML =
+        data.tags.slice(0, 20).map(t => `<a href="#" onclick="filterTag('${t.slug}')" class="tag">${t.name} (${t.thread_count})</a>`).join(' ');
+    } catch {}
+  }
+
+  function filterCategory(slug) {
+    activeCategory = slug; activeTag = '';
+    loadThreads(1);
+  }
+  function filterTag(slug) {
+    activeTag = slug; activeCategory = '';
+    loadThreads(1);
+  }
+
+  document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadThreads(1); });
+
+  renderNav();
+  loadThreads();
+  loadCategories();
+  loadTags();
+</script>
+</body>
+</html>

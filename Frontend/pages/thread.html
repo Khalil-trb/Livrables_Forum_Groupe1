@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thread — Forum</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="../index.html">FORUM</a>
+  <div class="nav-links" id="nav-links">
+    <a href="../index.html">← Threads</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<div class="container">
+  <div id="thread-content"><div class="loading">Loading thread…</div></div>
+  <div id="comments-section" style="display:none;">
+    <hr />
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+      <h3 style="font-family:var(--font-display); font-size:1.3rem;">Replies</h3>
+    </div>
+    <div id="comment-list"></div>
+    <hr />
+    <div id="reply-form"></div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  const slug = new URLSearchParams(location.search).get('slug');
+  let threadId = null;
+  let replyingTo = null;
+
+  function renderNav() {
+    const user = auth.getUser();
+    document.getElementById('nav-auth').innerHTML = user
+      ? `<span style="color:var(--text-dim);font-size:0.85rem;">${user.username}</span> <a href="#" onclick="auth.logout()">Logout</a>`
+      : `<a href="login.html">Login</a>`;
+  }
+
+  async function loadThread() {
+    if (!slug) { document.getElementById('thread-content').innerHTML = '<div class="alert alert-error">Thread not found.</div>'; return; }
+    try {
+      const data = await api.get(`/threads/${slug}`);
+      const t = data.thread;
+      threadId = t.id;
+      document.title = `${t.title} — Forum`;
+
+      document.getElementById('thread-content').innerHTML = `
+        <div style="margin-bottom:2rem;">
+          <div class="thread-flags" style="margin-bottom:0.5rem;">
+            ${t.is_pinned ? '<span class="flag flag-pinned">📌 Pinned</span>' : ''}
+            ${t.is_locked ? '<span class="flag flag-locked">🔒 Locked</span>' : ''}
+          </div>
+          <h1 style="font-family:var(--font-display); font-size:clamp(1.5rem,4vw,2.5rem); line-height:1.2; letter-spacing:-0.02em; margin-bottom:0.75rem;">${t.title}</h1>
+          <div style="display:flex; gap:1.25rem; align-items:center; flex-wrap:wrap; margin-bottom:1.5rem;">
+            <div class="thread-meta">
+              <span>by <strong>${t.author_name}</strong></span>
+              <span class="category-pill">${t.category_name}</span>
+              <span>${new Date(t.created_at).toLocaleDateString()}</span>
+              <span>👁 ${t.view_count} views</span>
+            </div>
+          </div>
+          <div style="font-size:0.95rem; line-height:1.8; color:#ccc; white-space:pre-wrap; margin-bottom:1.5rem;">${t.content}</div>
+          <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <div class="vote-bar">
+              <button class="vote-btn" onclick="vote('thread', ${t.id}, 1)" id="up-thread">▲</button>
+              <span class="vote-score" id="score-thread">${t.vote_score}</span>
+              <button class="vote-btn" onclick="vote('thread', ${t.id}, -1)" id="down-thread">▼</button>
+            </div>
+            <div>${t.tags?.map(tg => `<span class="tag">${tg.name}</span>`).join(' ') || ''}</div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('comments-section').style.display = 'block';
+      renderReplyForm(null, t.is_locked);
+      loadComments();
+    } catch (e) {
+      document.getElementById('thread-content').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+
+  async function loadComments() {
+    try {
+      const data = await api.get(`/threads/${threadId}/comments`);
+      const el = document.getElementById('comment-list');
+      if (!data.comments.length) { el.innerHTML = '<div class="empty" style="padding:1.5rem 0;">No replies yet. Be the first!</div>'; return; }
+      el.innerHTML = data.comments.map(c => renderComment(c)).join('');
+    } catch {}
+  }
+
+  function renderComment(c, depth = 0) {
+    const user = auth.getUser();
+    return `
+      <div class="comment" style="${depth > 0 ? 'padding-left:0;' : ''}">
+        <div class="comment-header">
+          <span class="comment-author">${c.author_name}</span>
+          <span class="comment-time">${new Date(c.created_at).toLocaleString()}</span>
+        </div>
+        <div class="comment-content">${c.content}</div>
+        <div class="comment-actions">
+          <div class="vote-bar">
+            <button class="vote-btn btn-sm" onclick="vote('comment', ${c.id}, 1)">▲</button>
+            <span class="vote-score" id="score-comment-${c.id}">${c.vote_score}</span>
+            <button class="vote-btn btn-sm" onclick="vote('comment', ${c.id}, -1)">▼</button>
+          </div>
+          ${auth.isLoggedIn() ? `<button class="comment-reply-btn" onclick="setReply(${c.id}, '${c.author_name}')">Reply</button>` : ''}
+          ${user && (user.id === c.author_id || ['admin','moderator'].includes(user.role))
+            ? `<button class="comment-reply-btn" style="color:var(--accent2)" onclick="deleteComment(${c.id})">Delete</button>` : ''}
+        </div>
+        ${c.replies?.length ? `<div class="replies">${c.replies.map(r => renderComment(r, depth+1)).join('')}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function renderReplyForm(parentId = null, locked = false) {
+    const el = document.getElementById('reply-form');
+    if (!auth.isLoggedIn()) {
+      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;"><a href="login.html">Login</a> to post a reply.</p>`;
+      return;
+    }
+    if (locked) {
+      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;">🔒 This thread is locked.</p>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="card" style="margin-top:1rem;">
+        ${parentId ? `<div style="font-size:0.8rem; color:var(--accent); margin-bottom:0.75rem;">↩ Replying to comment <button onclick="setReply(null)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.8rem;">✕ cancel</button></div>` : '<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Leave a reply</div>'}
+        <div class="form-group">
+          <textarea id="reply-content" placeholder="Write your reply…"></textarea>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="submitReply(${parentId})">Post Reply</button>
+      </div>
+    `;
+  }
+
+  function setReply(parentId, authorName) {
+    replyingTo = parentId;
+    renderReplyForm(parentId);
+    document.getElementById('reply-content')?.focus();
+  }
+
+  async function submitReply(parentId) {
+    const content = document.getElementById('reply-content').value.trim();
+    if (!content) return;
+    try {
+      await api.post(`/threads/${threadId}/comments`, { content, parent_id: parentId || null }, true);
+      renderReplyForm(null);
+      loadComments();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function deleteComment(id) {
+    if (!confirm('Delete this comment?')) return;
+    try {
+      await api.delete(`/comments/${id}`, true);
+      loadComments();
+    } catch (e) { alert(e.message); }
+  }
+
+  async function vote(type, id, value) {
+    if (!auth.isLoggedIn()) { window.location.href = 'login.html'; return; }
+    try {
+      await api.post('/vote', { target_type: type, target_id: id, value }, true);
+      if (type === 'thread') {
+        const el = document.getElementById('score-thread');
+        el.textContent = parseInt(el.textContent) + value;
+      } else {
+        const el = document.getElementById(`score-comment-${id}`);
+        if (el) el.textContent = parseInt(el.textContent) + value;
+      }
+    } catch (e) { alert(e.message); }
+  }
+
+  renderNav();
+  loadThread();
+</script>
+</body>
+</html>
