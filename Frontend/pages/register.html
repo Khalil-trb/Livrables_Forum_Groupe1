@@ -3,23 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register — Forum</title>
+  <title>Register - Forum</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <nav>
-  <a class="nav-brand" href="../index.html">FORUM</a>
+  <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links">
-    <a href="../index.html">← Back</a>
+    <a href="../index.html">&larr; Back</a>
   </div>
 </nav>
 
 <div class="container" style="max-width:420px;">
   <div style="padding-top:3rem;">
     <div class="page-header">
-      <h2>Create an account</h2>
-      <p>Join the conversation today</p>
+      <h2>Créer un compte</h2>
+      <p>Rejoignez la conversation dès aujourd'hui</p>
     </div>
 
     <div class="card">
@@ -34,7 +34,10 @@
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="password" placeholder="Min. 6 characters" />
+        <input type="password" id="password" placeholder="Mot de passe" />
+        <small style="display:block; margin-top:0.4rem; color:var(--text-muted); font-size:0.78rem;">
+          Au moins 8 caractères, une lettre majuscule et un caractère spécial.
+        </small>
       </div>
       <button class="btn btn-primary" style="width:100%;" onclick="register()">Create Account</button>
     </div>
@@ -47,12 +50,15 @@
 
 <script src="../js/api.js"></script>
 <script>
-  if (auth.isLoggedIn()) window.location.href = '../index.html';
-
   async function register() {
     const username = document.getElementById('username').value.trim();
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
+    const userRegex = /^[A-Za-z0-9]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const hasMinLen = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasSpecial = /[^A-Za-z0-9]/.test(password);
     const alertEl = document.getElementById('alert');
     alertEl.innerHTML = '';
 
@@ -60,10 +66,19 @@
       alertEl.innerHTML = '<div class="alert alert-error">Please fill in all fields.</div>';
       return;
     }
-    if (password.length < 6) {
-      alertEl.innerHTML = '<div class="alert alert-error">Password must be at least 6 characters.</div>';
+    if (!userRegex.test(username)) {
+      alertEl.innerHTML = '<div class="alert alert-error">Username must contain only letters and numbers.</div>';
       return;
     }
+    if (!emailRegex.test(email)) {
+      alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
+      return;
+    }
+    if (!hasMinLen || !hasUpper || !hasSpecial) {
+      alertEl.innerHTML = '<div class="alert alert-error">Password must be at least 8 characters and include one uppercase letter and one special character.</div>';
+      return;
+    }
+
     try {
       const data = await api.post('/auth/register', { username, email, password });
       auth.login(data.token, data.user);

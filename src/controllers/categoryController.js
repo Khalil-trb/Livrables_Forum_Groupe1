@@ -49,9 +49,25 @@ const getTags = async (req, res) => {
 
 const createTag = async (req, res) => {
   const { name } = req.body;
+  const cleanName = (name || '').trim();
+  if (!cleanName) {
+    return res.status(400).json({ error: 'Tag name is required' });
+  }
+  if (cleanName.length > 50) {
+    return res.status(400).json({ error: 'Tag name is too long (max 50 chars)' });
+  }
   try {
-    const slug = slugify(name);
-    const [result] = await db.query('INSERT INTO tags (name, slug) VALUES (?, ?)', [name, slug]);
+    const slug = slugify(cleanName);
+    const [existing] = await db.query('SELECT id, name, slug FROM tags WHERE slug = ? OR name = ?', [slug, cleanName]);
+    if (existing.length) {
+      return res.status(200).json({
+        message: 'Tag already exists',
+        tagId: existing[0].id,
+        tag: existing[0]
+      });
+    }
+
+    const [result] = await db.query('INSERT INTO tags (name, slug) VALUES (?, ?)', [cleanName, slug]);
     res.status(201).json({ message: 'Tag created', tagId: result.insertId });
   } catch (err) {
     res.status(500).json({ error: 'Failed to create tag', details: err.message });

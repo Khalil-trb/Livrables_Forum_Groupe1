@@ -90,7 +90,7 @@ Base URL: `http://localhost:3000/api`
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
 | GET | `/tags` | ❌ | List all tags |
-| POST | `/tags` | mod+ | Create a tag |
+| POST | `/tags` | ✅ | Create a tag (authenticated user) |
 
 ### Moderation (admin/moderator)
 | Method | Endpoint | Auth | Description |
@@ -131,6 +131,7 @@ POST /api/threads
 {
   "title": "How do I learn Node.js?",
   "content": "Looking for resources...",
+  "image_url": "https://media.giphy.com/media/abc123/giphy.gif",
   "category_id": 1,
   "tags": [2, 5]
 }
@@ -141,8 +142,17 @@ POST /api/threads
 POST /api/threads/42/comments
 {
   "content": "Great question!",
+  "image_url": "https://example.com/reply-image.png",
   "parent_id": 10
 }
+```
+
+### Database update for media URLs
+If your database already exists, add these columns once:
+
+```sql
+ALTER TABLE threads ADD COLUMN image_url VARCHAR(500) NULL;
+ALTER TABLE comments ADD COLUMN image_url VARCHAR(500) NULL;
 ```
 
 ### Vote

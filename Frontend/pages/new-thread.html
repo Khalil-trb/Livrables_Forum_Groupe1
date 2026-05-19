@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>New Thread — Forum</title>
+  <title>New Thread - Forum</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <nav>
-  <a class="nav-brand" href="../index.html">FORUM</a>
+  <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links">
-    <a href="../index.html">← Back</a>
+    <a href="../index.html">&larr; Back</a>
   </div>
 </nav>
 
@@ -31,16 +31,34 @@
       <div class="form-group">
         <label>Category</label>
         <select id="category">
-          <option value="">Select a category…</option>
+          <option value="">Select a category...</option>
         </select>
       </div>
       <div class="form-group">
         <label>Content</label>
-        <textarea id="content" placeholder="Write your post…" style="min-height:200px;"></textarea>
+        <textarea id="content" placeholder="Write your post..." style="min-height:200px;"></textarea>
       </div>
       <div class="form-group">
-        <label>Tags <span style="font-weight:300; text-transform:none; letter-spacing:0;">(optional — hold Ctrl to select multiple)</span></label>
-        <select id="tags" multiple style="min-height:90px;"></select>
+        <label>Image / GIF URL <span style="font-weight:300; text-transform:none; letter-spacing:0;">(optional)</span></label>
+        <input type="url" id="image_url" placeholder="https://example.com/my-image.gif" />
+      </div>
+      <div class="form-group">
+        <label>Tags <span style="font-weight:300; text-transform:none; letter-spacing:0;">(optional)</span></label>
+        <input type="text" id="tag-search" placeholder="Search tags..." oninput="renderTagOptions()" />
+        <div id="selected-tags" style="margin-top:0.6rem; display:flex; flex-wrap:wrap; gap:0.4rem;"></div>
+        <div id="tag-options" style="margin-top:0.6rem; display:flex; flex-wrap:wrap; gap:0.4rem;"></div>
+        <div style="margin-top:0.6rem; display:flex; gap:0.5rem; align-items:center;">
+          <input type="text" id="new-tag-name" placeholder="Create a new tag" />
+          <button type="button" class="btn btn-ghost btn-sm" onclick="createTag()">Create</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>State</label>
+        <select id="state">
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+          <option value="archived">Archived</option>
+        </select>
       </div>
       <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
         <a href="../index.html" class="btn btn-ghost">Cancel</a>
@@ -53,6 +71,8 @@
 <script src="../js/api.js"></script>
 <script>
   if (!auth.isLoggedIn()) window.location.href = 'login.html';
+  let availableTags = [];
+  let selectedTagIds = new Set();
 
   async function loadOptions() {
     try {
@@ -63,20 +83,89 @@
         o.value = c.id; o.textContent = c.name;
         catEl.appendChild(o);
       });
-      const tagEl = document.getElementById('tags');
-      tags.tags.forEach(t => {
-        const o = document.createElement('option');
-        o.value = t.id; o.textContent = t.name;
-        tagEl.appendChild(o);
-      });
+      availableTags = tags.tags || [];
+      renderTagOptions();
+      renderSelectedTags();
     } catch {}
+  }
+
+  function renderTagOptions() {
+    const search = document.getElementById('tag-search').value.trim().toLowerCase();
+    const optionsEl = document.getElementById('tag-options');
+    const filtered = availableTags
+      .filter(t => !selectedTagIds.has(Number(t.id)))
+      .filter(t => !search || t.name.toLowerCase().includes(search))
+      .slice(0, 30);
+
+    if (!filtered.length) {
+      optionsEl.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">No matching tags.</span>';
+      return;
+    }
+
+    optionsEl.innerHTML = filtered
+      .map(t => `<button type="button" class="tag" onclick="addTag(${t.id})">${escapeHtml(t.name)}</button>`)
+      .join('');
+  }
+
+  function renderSelectedTags() {
+    const selectedEl = document.getElementById('selected-tags');
+    const selected = availableTags.filter(t => selectedTagIds.has(Number(t.id)));
+    if (!selected.length) {
+      selectedEl.innerHTML = '<span style="color:var(--text-muted); font-size:0.85rem;">No tag selected.</span>';
+      return;
+    }
+    selectedEl.innerHTML = selected
+      .map(t => `<button type="button" class="tag" style="border-color:var(--accent); color:var(--accent);" onclick="removeTag(${t.id})">${escapeHtml(t.name)} ×</button>`)
+      .join('');
+  }
+
+  function addTag(tagId) {
+    selectedTagIds.add(Number(tagId));
+    renderSelectedTags();
+    renderTagOptions();
+  }
+
+  function removeTag(tagId) {
+    selectedTagIds.delete(Number(tagId));
+    renderSelectedTags();
+    renderTagOptions();
+  }
+
+  async function createTag() {
+    const input = document.getElementById('new-tag-name');
+    const name = input.value.trim();
+    const alertEl = document.getElementById('alert');
+    alertEl.innerHTML = '';
+    if (!name) return;
+    try {
+      const result = await api.post('/tags', { name }, true);
+      const tagsData = await api.get('/tags');
+      availableTags = tagsData.tags || [];
+      if (result.tagId) selectedTagIds.add(Number(result.tagId));
+      input.value = '';
+      renderSelectedTags();
+      renderTagOptions();
+    } catch (e) {
+      alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   async function submit() {
     const title = document.getElementById('title').value.trim();
     const content = document.getElementById('content').value.trim();
+    const image_url = document.getElementById('image_url').value.trim();
     const category_id = document.getElementById('category').value;
-    const tags = Array.from(document.getElementById('tags').selectedOptions).map(o => Number(o.value));
+    const state = document.getElementById('state').value;
+    const tags = Array.from(selectedTagIds);
     const alertEl = document.getElementById('alert');
     alertEl.innerHTML = '';
 
@@ -85,7 +174,11 @@
       return;
     }
     try {
-      const data = await api.post('/threads', { title, content, category_id: Number(category_id), tags }, true);
+      const data = await api.post('/threads', { title, content, image_url, category_id: Number(category_id), tags, state }, true);
+      if (state === 'archived') {
+        window.location.href = '../index.html';
+        return;
+      }
       window.location.href = `thread.html?slug=${data.slug}`;
     } catch (e) {
       alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;

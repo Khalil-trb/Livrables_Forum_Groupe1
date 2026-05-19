@@ -21,11 +21,16 @@ const vote = async (req, res) => {
       if (existing[0].value === Number(value)) {
         // Remove vote (toggle off)
         await db.query('DELETE FROM votes WHERE id = ?', [existing[0].id]);
-        return res.json({ message: 'Vote removed' });
+        return res.json({ message: 'Vote removed', action: 'removed', delta: -Number(value), current_vote: 0 });
       } else {
         // Update vote
         await db.query('UPDATE votes SET value = ? WHERE id = ?', [value, existing[0].id]);
-        return res.json({ message: 'Vote updated' });
+        return res.json({
+          message: 'Vote updated',
+          action: 'updated',
+          delta: Number(value) - Number(existing[0].value),
+          current_vote: Number(value)
+        });
       }
     }
 
@@ -33,7 +38,7 @@ const vote = async (req, res) => {
       'INSERT INTO votes (user_id, target_type, target_id, value) VALUES (?, ?, ?, ?)',
       [req.user.id, target_type, target_id, value]
     );
-    res.status(201).json({ message: 'Vote recorded' });
+    res.status(201).json({ message: 'Vote recorded', action: 'added', delta: Number(value), current_vote: Number(value) });
   } catch (err) {
     res.status(500).json({ error: 'Failed to record vote', details: err.message });
   }

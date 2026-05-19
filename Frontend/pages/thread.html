@@ -3,27 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Thread — Forum</title>
+  <title>Thread - Forum</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 
 <nav>
-  <a class="nav-brand" href="../index.html">FORUM</a>
+  <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links" id="nav-links">
-    <a href="../index.html">← Threads</a>
+    <a href="../index.html">&larr; Threads</a>
     <span id="nav-auth"></span>
   </div>
 </nav>
 
 <div class="container">
-  <div id="thread-content"><div class="loading">Loading thread…</div></div>
+  <div id="thread-content"><div class="loading">Loading thread...</div></div>
   <div id="comments-section" style="display:none;">
     <hr />
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
       <h3 style="font-family:var(--font-display); font-size:1.3rem;">Replies</h3>
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <select id="comment-sort" onchange="changeCommentSort(this.value)" style="width:auto; min-width:170px;">
+          <option value="newest">Newest first</option>
+          <option value="chronological">Chronological</option>
+          <option value="likes">Most liked</option>
+          <option value="dislikes">Most disliked</option>
+        </select>
+        <select id="comment-batch-size" onchange="changeCommentBatchSize(this.value)" style="width:auto;">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30">30</option>
+          <option value="all">All</option>
+        </select>
+      </div>
     </div>
     <div id="comment-list"></div>
+    <div id="comment-count-info" style="margin-top:0.6rem; font-size:0.82rem; color:var(--text-muted);"></div>
     <hr />
     <div id="reply-form"></div>
   </div>
@@ -33,52 +48,129 @@
 <script>
   const slug = new URLSearchParams(location.search).get('slug');
   let threadId = null;
-  let replyingTo = null;
+  let currentThread = null;
+  let isEditingThread = false;
+  let editingCommentId = null;
+  let commentSort = 'newest';
+  let commentBatchSize = '10';
+  let editCategories = [];
+  let editTags = [];
+  const editedLabel = (createdAt, updatedAt) =>
+    new Date(updatedAt).getTime() > new Date(createdAt).getTime() ? ' (edited)' : '';
 
   function renderNav() {
     const user = auth.getUser();
-    document.getElementById('nav-auth').innerHTML = user
-      ? `<span style="color:var(--text-dim);font-size:0.85rem;">${user.username}</span> <a href="#" onclick="auth.logout()">Logout</a>`
-      : `<a href="login.html">Login</a>`;
+    const navAuth = document.getElementById('nav-auth');
+    if (user) {
+      navAuth.innerHTML = `${user.role === 'admin' ? '<a href="admin-dashboard.html">Admin Dashboard</a>' : ''} <span id="account-menu-slot"></span>`;
+      auth.renderAccountMenu('account-menu-slot', { basePath: '../' });
+    } else {
+      auth.renderAccountMenu('nav-auth', { basePath: '../' });
+    }
+  }
+
+  function canManageThread(thread, user) {
+    return !!user && (user.id === thread.author_id || ['admin', 'moderator'].includes(user.role));
+  }
+
+  function canReplyOnLocked(thread, user) {
+    if (!thread.is_locked) return true;
+    return !!user && (user.id === thread.author_id || user.role === 'admin');
   }
 
   async function loadThread() {
-    if (!slug) { document.getElementById('thread-content').innerHTML = '<div class="alert alert-error">Thread not found.</div>'; return; }
+    if (!slug) {
+      document.getElementById('thread-content').innerHTML = '<div class="alert alert-error">Thread not found.</div>';
+      return;
+    }
+
     try {
-      const data = await api.get(`/threads/${slug}`);
+      const data = await api.get(`/threads/${slug}`, auth.isLoggedIn());
       const t = data.thread;
+      const user = auth.getUser();
       threadId = t.id;
-      document.title = `${t.title} — Forum`;
+      currentThread = t;
+      document.title = `${t.title} - Forum`;
+      const showInlineEdit = isEditingThread && canManageThread(t, user);
 
       document.getElementById('thread-content').innerHTML = `
         <div style="margin-bottom:2rem;">
           <div class="thread-flags" style="margin-bottom:0.5rem;">
-            ${t.is_pinned ? '<span class="flag flag-pinned">📌 Pinned</span>' : ''}
-            ${t.is_locked ? '<span class="flag flag-locked">🔒 Locked</span>' : ''}
+            ${t.is_pinned ? '<span class="flag flag-pinned">Pinned</span>' : ''}
+            ${t.is_locked ? '<span class="flag flag-locked">Locked</span>' : ''}
+            ${t.state === 'archived' ? '<span class="flag flag-locked">Archived</span>' : ''}
           </div>
-          <h1 style="font-family:var(--font-display); font-size:clamp(1.5rem,4vw,2.5rem); line-height:1.2; letter-spacing:-0.02em; margin-bottom:0.75rem;">${t.title}</h1>
+          ${showInlineEdit
+            ? `<input id="edit-title" type="text" value="${escapeHtml(t.title)}" style="width:100%; font-family:var(--font-display); font-size:clamp(1.5rem,4vw,2.5rem); line-height:1.2; letter-spacing:-0.02em; margin-bottom:0.75rem;" />`
+            : `<h1 style="font-family:var(--font-display); font-size:clamp(1.5rem,4vw,2.5rem); line-height:1.2; letter-spacing:-0.02em; margin-bottom:0.75rem;">${t.title}</h1>`
+          }
           <div style="display:flex; gap:1.25rem; align-items:center; flex-wrap:wrap; margin-bottom:1.5rem;">
             <div class="thread-meta">
-              <span>by <strong>${t.author_name}</strong></span>
+              <span>by <strong>${t.author_name}</strong> <span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span></span>
               <span class="category-pill">${t.category_name}</span>
-              <span>${new Date(t.created_at).toLocaleDateString()}</span>
-              <span>👁 ${t.view_count} views</span>
+              <span>${new Date(t.created_at).toLocaleDateString()}${editedLabel(t.created_at, t.updated_at)}</span>
+              <span>${t.view_count} views</span>
             </div>
           </div>
-          <div style="font-size:0.95rem; line-height:1.8; color:#ccc; white-space:pre-wrap; margin-bottom:1.5rem;">${t.content}</div>
-          <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
-            <div class="vote-bar">
-              <button class="vote-btn" onclick="vote('thread', ${t.id}, 1)" id="up-thread">▲</button>
-              <span class="vote-score" id="score-thread">${t.vote_score}</span>
-              <button class="vote-btn" onclick="vote('thread', ${t.id}, -1)" id="down-thread">▼</button>
+          ${showInlineEdit
+            ? `
+              <textarea id="edit-content" style="width:100%; min-height:220px; font-size:0.95rem; line-height:1.8; color:var(--text-dim); white-space:pre-wrap; margin-bottom:1rem;">${escapeHtml(t.content)}</textarea>
+              <div style="margin-bottom:1rem;">
+                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">Image / GIF URL</label>
+                <input id="edit-image-url" type="url" value="${escapeHtml(t.image_url || '')}" placeholder="https://example.com/image.gif" />
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                <div>
+                  <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">Category</label>
+                  <select id="edit-category">${renderCategoryOptions(t.category_id)}</select>
+                </div>
+                <div>
+                  <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">State</label>
+                  <select id="edit-state">
+                    <option value="open" ${t.state === 'open' ? 'selected' : ''}>Open</option>
+                    <option value="closed" ${t.state === 'closed' ? 'selected' : ''}>Closed</option>
+                    <option value="archived" ${t.state === 'archived' ? 'selected' : ''}>Archived</option>
+                  </select>
+                </div>
+              </div>
+              <div style="margin-bottom:1.5rem;">
+                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">Tags</label>
+                <select id="edit-tags" multiple style="min-height:110px;">${renderTagOptions(t.tags || [])}</select>
+              </div>
+            `
+            : `
+              <div style="font-size:0.95rem; line-height:1.8; color:var(--text-dim); white-space:pre-wrap; margin-bottom:1rem;">${t.content}</div>
+              ${t.image_url ? `<div style="margin-bottom:1.5rem;"><img src="${escapeHtml(t.image_url)}" alt="Thread media" style="max-width:100%; border-radius:12px; border:1px solid var(--line);" /></div>` : ''}
+            `
+          }
+          <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; justify-content:space-between;">
+            <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+              <div class="vote-bar">
+                <button class="vote-btn" onclick="vote('thread', ${t.id}, 1)" id="up-thread">▲</button>
+                <span class="vote-score" id="score-thread">${t.vote_score}</span>
+                <button class="vote-btn" onclick="vote('thread', ${t.id}, -1)" id="down-thread">▼</button>
+              </div>
+              <div>${t.tags?.map(tg => `<span class="tag">${tg.name}</span>`).join(' ') || ''}</div>
             </div>
-            <div>${t.tags?.map(tg => `<span class="tag">${tg.name}</span>`).join(' ') || ''}</div>
+            ${canManageThread(t, user) ? `
+              <div style="display:flex; gap:0.5rem;">
+                ${showInlineEdit
+                  ? '<button class="btn btn-ghost btn-sm" onclick="cancelEditThread()">Cancel Edit</button><button class="btn btn-primary btn-sm" onclick="saveThreadEdit()">Save</button>'
+                  : '<button class="btn btn-ghost btn-sm" onclick="startEditThread()">Edit Topic</button>'
+                }
+                <button class="btn btn-danger btn-sm" onclick="deleteThread()">Delete Topic</button>
+              </div>
+            ` : ''}
           </div>
         </div>
       `;
 
       document.getElementById('comments-section').style.display = 'block';
-      renderReplyForm(null, t.is_locked);
+      const sortSelect = document.getElementById('comment-sort');
+      if (sortSelect) sortSelect.value = commentSort;
+      const batchSelect = document.getElementById('comment-batch-size');
+      if (batchSelect) batchSelect.value = commentBatchSize;
+      renderReplyForm();
       loadComments();
     } catch (e) {
       document.getElementById('thread-content').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
@@ -87,11 +179,31 @@
 
   async function loadComments() {
     try {
-      const data = await api.get(`/threads/${threadId}/comments`);
+      const data = await api.get(`/threads/${threadId}/comments?sort=${encodeURIComponent(commentSort)}`, auth.isLoggedIn());
       const el = document.getElementById('comment-list');
-      if (!data.comments.length) { el.innerHTML = '<div class="empty" style="padding:1.5rem 0;">No replies yet. Be the first!</div>'; return; }
-      el.innerHTML = data.comments.map(c => renderComment(c)).join('');
-    } catch {}
+      const limitedComments = commentBatchSize === 'all'
+        ? data.comments
+        : data.comments.slice(0, Number(commentBatchSize));
+      const infoEl = document.getElementById('comment-count-info');
+      if (infoEl) infoEl.textContent = `Showing ${limitedComments.length} of ${data.comments.length} messages`;
+      if (!limitedComments.length) {
+        el.innerHTML = '<div class="empty" style="padding:1.5rem 0;">No replies yet. Be the first!</div>';
+        return;
+      }
+      el.innerHTML = limitedComments.map(c => renderComment(c)).join('');
+    } catch (e) {
+      document.getElementById('comment-list').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+
+  function changeCommentSort(value) {
+    commentSort = value;
+    loadComments();
+  }
+
+  function changeCommentBatchSize(value) {
+    commentBatchSize = value;
+    loadComments();
   }
 
   function renderComment(c, depth = 0) {
@@ -99,58 +211,111 @@
     return `
       <div class="comment" style="${depth > 0 ? 'padding-left:0;' : ''}">
         <div class="comment-header">
-          <span class="comment-author">${c.author_name}</span>
-          <span class="comment-time">${new Date(c.created_at).toLocaleString()}</span>
+          <span class="comment-author">
+            ${c.author_name}
+            ${currentThread && Number(c.author_id) === Number(currentThread.author_id)
+              ? '<span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span>'
+              : ''}
+          </span>
+          <span class="comment-time">${new Date(c.created_at).toLocaleString()}${editedLabel(c.created_at, c.updated_at)}</span>
         </div>
-        <div class="comment-content">${c.content}</div>
+        <div class="comment-content">
+          ${editingCommentId === c.id
+            ? `
+              <textarea id="edit-comment-${c.id}" style="width:100%; min-height:110px; margin-bottom:0.5rem;">${escapeHtml(c.content)}</textarea>
+              <input id="edit-comment-image-${c.id}" type="url" value="${escapeHtml(c.image_url || '')}" placeholder="https://example.com/image.gif" />
+            `
+            : `
+              <div>${c.content}</div>
+              ${c.image_url ? `<div style="margin-top:0.6rem;"><img src="${escapeHtml(c.image_url)}" alt="Comment media" style="max-width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
+            `
+          }
+        </div>
         <div class="comment-actions">
           <div class="vote-bar">
             <button class="vote-btn btn-sm" onclick="vote('comment', ${c.id}, 1)">▲</button>
             <span class="vote-score" id="score-comment-${c.id}">${c.vote_score}</span>
             <button class="vote-btn btn-sm" onclick="vote('comment', ${c.id}, -1)">▼</button>
           </div>
-          ${auth.isLoggedIn() ? `<button class="comment-reply-btn" onclick="setReply(${c.id}, '${c.author_name}')">Reply</button>` : ''}
-          ${user && (user.id === c.author_id || ['admin','moderator'].includes(user.role))
+          ${auth.isLoggedIn() ? `<button class="comment-reply-btn" onclick="setReply(${c.id})">Reply</button>` : ''}
+          ${user && user.id === c.author_id && editingCommentId !== c.id
+            ? `<button class="comment-reply-btn" onclick="startEditComment(${c.id})">Edit</button>` : ''}
+          ${user && user.id === c.author_id && editingCommentId === c.id
+            ? `<button class="comment-reply-btn" onclick="saveCommentEdit(${c.id})">Save</button> <button class="comment-reply-btn" onclick="cancelEditComment()">Cancel</button>` : ''}
+          ${user && (user.id === c.author_id || canManageThread(currentThread, user))
             ? `<button class="comment-reply-btn" style="color:var(--accent2)" onclick="deleteComment(${c.id})">Delete</button>` : ''}
         </div>
-        ${c.replies?.length ? `<div class="replies">${c.replies.map(r => renderComment(r, depth+1)).join('')}</div>` : ''}
+        ${c.replies?.length ? `<div class="replies">${c.replies.map(r => renderComment(r, depth + 1)).join('')}</div>` : ''}
       </div>
     `;
   }
 
-  function renderReplyForm(parentId = null, locked = false) {
+  function renderReplyForm(parentId = null) {
     const el = document.getElementById('reply-form');
+    const user = auth.getUser();
+
     if (!auth.isLoggedIn()) {
       el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;"><a href="login.html">Login</a> to post a reply.</p>`;
       return;
     }
-    if (locked) {
-      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;">🔒 This thread is locked.</p>`;
+
+    if (currentThread && !canReplyOnLocked(currentThread, user)) {
+      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;">This thread is locked. Only the creator or an admin can post.</p>`;
       return;
     }
+
     el.innerHTML = `
       <div class="card" style="margin-top:1rem;">
-        ${parentId ? `<div style="font-size:0.8rem; color:var(--accent); margin-bottom:0.75rem;">↩ Replying to comment <button onclick="setReply(null)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.8rem;">✕ cancel</button></div>` : '<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Leave a reply</div>'}
+        ${parentId ? `<div style="font-size:0.8rem; color:var(--accent); margin-bottom:0.75rem;">Replying to comment <button onclick="setReply(null)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.8rem;">cancel</button></div>` : '<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Leave a reply</div>'}
         <div class="form-group">
-          <textarea id="reply-content" placeholder="Write your reply…"></textarea>
+          <textarea id="reply-content" placeholder="Write your reply..."></textarea>
+        </div>
+        <div class="form-group">
+          <input id="reply-image-url" type="url" placeholder="Image / GIF URL (optional)" />
         </div>
         <button class="btn btn-primary btn-sm" onclick="submitReply(${parentId})">Post Reply</button>
       </div>
     `;
   }
 
-  function setReply(parentId, authorName) {
-    replyingTo = parentId;
+  function setReply(parentId) {
     renderReplyForm(parentId);
     document.getElementById('reply-content')?.focus();
   }
 
   async function submitReply(parentId) {
     const content = document.getElementById('reply-content').value.trim();
+    const image_url = document.getElementById('reply-image-url').value.trim();
     if (!content) return;
     try {
-      await api.post(`/threads/${threadId}/comments`, { content, parent_id: parentId || null }, true);
+      await api.post(`/threads/${threadId}/comments`, { content, image_url, parent_id: parentId || null }, true);
       renderReplyForm(null);
+      loadComments();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function startEditComment(id) {
+    editingCommentId = id;
+    loadComments();
+  }
+
+  function cancelEditComment() {
+    editingCommentId = null;
+    loadComments();
+  }
+
+  async function saveCommentEdit(id) {
+    const content = document.getElementById(`edit-comment-${id}`)?.value.trim();
+    const image_url = document.getElementById(`edit-comment-image-${id}`)?.value.trim();
+    if (!content) {
+      alert('Comment cannot be empty.');
+      return;
+    }
+    try {
+      await api.put(`/comments/${id}`, { content, image_url }, true);
+      editingCommentId = null;
       loadComments();
     } catch (e) {
       alert(e.message);
@@ -162,21 +327,109 @@
     try {
       await api.delete(`/comments/${id}`, true);
       loadComments();
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function deleteThread() {
+    if (!currentThread) return;
+    if (!confirm('Delete this topic?')) return;
+    try {
+      await api.delete(`/threads/${currentThread.id}`, true);
+      window.location.href = '../index.html';
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function startEditThread() {
+    ensureEditOptions().then(() => {
+      isEditingThread = true;
+      loadThread();
+    }).catch((e) => alert(e.message));
+  }
+
+  function cancelEditThread() {
+    isEditingThread = false;
+    loadThread();
+  }
+
+  async function saveThreadEdit() {
+    if (!currentThread) return;
+    const title = document.getElementById('edit-title')?.value.trim();
+    const content = document.getElementById('edit-content')?.value.trim();
+    const image_url = document.getElementById('edit-image-url')?.value.trim();
+    const category_id = Number(document.getElementById('edit-category')?.value);
+    const state = document.getElementById('edit-state')?.value;
+    const tags = Array.from(document.getElementById('edit-tags')?.selectedOptions || []).map(o => Number(o.value));
+    if (!title || !content) {
+      alert('Title and content cannot be empty.');
+      return;
+    }
+    if (!category_id) {
+      alert('Category is required.');
+      return;
+    }
+    try {
+      await api.put(
+        `/threads/${currentThread.id}`,
+        { title, content, image_url, category_id, state, tags },
+        true
+      );
+      isEditingThread = false;
+      await loadThread();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  function escapeHtml(text) {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  async function ensureEditOptions() {
+    if (editCategories.length && editTags.length) return;
+    const [cats, tags] = await Promise.all([api.get('/categories'), api.get('/tags')]);
+    editCategories = cats.categories || [];
+    editTags = tags.tags || [];
+  }
+
+  function renderCategoryOptions(currentCategoryId) {
+    return editCategories
+      .map(c => `<option value="${c.id}" ${Number(currentCategoryId) === Number(c.id) ? 'selected' : ''}>${escapeHtml(c.name)}</option>`)
+      .join('');
+  }
+
+  function renderTagOptions(currentTags) {
+    const selected = new Set((currentTags || []).map(t => Number(t.id)));
+    return editTags
+      .map(t => `<option value="${t.id}" ${selected.has(Number(t.id)) ? 'selected' : ''}>${escapeHtml(t.name)}</option>`)
+      .join('');
   }
 
   async function vote(type, id, value) {
-    if (!auth.isLoggedIn()) { window.location.href = 'login.html'; return; }
+    if (!auth.isLoggedIn()) {
+      window.location.href = 'login.html';
+      return;
+    }
     try {
-      await api.post('/vote', { target_type: type, target_id: id, value }, true);
+      const result = await api.post('/vote', { target_type: type, target_id: id, value }, true);
+      const delta = Number(result.delta || 0);
       if (type === 'thread') {
         const el = document.getElementById('score-thread');
-        el.textContent = parseInt(el.textContent) + value;
+        el.textContent = parseInt(el.textContent, 10) + delta;
       } else {
-        const el = document.getElementById(`score-comment-${id}`);
-        if (el) el.textContent = parseInt(el.textContent) + value;
+        await loadComments();
       }
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   renderNav();

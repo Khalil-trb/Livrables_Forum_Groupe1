@@ -67,4 +67,55 @@ const getUsers = async (req, res) => {
   }
 };
 
-module.exports = { banUser, changeRole, pinThread, lockThread, getUsers };
+// Get threads for admin dashboard
+const getThreads = async (req, res) => {
+  const { page = 1, limit = 50, search } = req.query;
+  const offset = (Number(page) - 1) * Number(limit);
+  try {
+    let query = `
+      SELECT t.id, t.title, t.slug, t.is_deleted, t.is_locked, t.created_at, u.username AS author_name
+      FROM threads t
+      JOIN users u ON u.id = t.author_id
+    `;
+    const params = [];
+    if (search) {
+      query += ' WHERE t.title LIKE ? OR u.username LIKE ?';
+      params.push(`%${search}%`, `%${search}%`);
+    }
+    query += ' ORDER BY t.created_at DESC LIMIT ? OFFSET ?';
+    params.push(Number(limit), Number(offset));
+    const [threads] = await db.query(query, params);
+    res.json({ threads });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch threads', details: err.message });
+  }
+};
+
+// Get comments for admin dashboard
+const getComments = async (req, res) => {
+  const { page = 1, limit = 50, search } = req.query;
+  const offset = (Number(page) - 1) * Number(limit);
+  try {
+    let query = `
+      SELECT c.id, c.content, c.thread_id, c.created_at, c.is_deleted,
+             u.username AS author_name, t.title AS thread_title
+      FROM comments c
+      JOIN users u ON u.id = c.author_id
+      JOIN threads t ON t.id = c.thread_id
+      WHERE c.is_deleted = FALSE
+    `;
+    const params = [];
+    if (search) {
+      query += ' AND (c.content LIKE ? OR u.username LIKE ? OR t.title LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    query += ' ORDER BY c.created_at DESC LIMIT ? OFFSET ?';
+    params.push(Number(limit), Number(offset));
+    const [comments] = await db.query(query, params);
+    res.json({ comments });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch comments', details: err.message });
+  }
+};
+
+module.exports = { banUser, changeRole, pinThread, lockThread, getUsers, getThreads, getComments };

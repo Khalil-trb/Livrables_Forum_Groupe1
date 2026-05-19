@@ -9,7 +9,7 @@
 <body>
 
 <nav>
-  <a class="nav-brand" href="index.html">FORUM</a>
+  <a class="nav-brand" href="index.html"><img src="img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links" id="nav-links">
     <a href="index.html">Threads</a>
     <span id="nav-auth"></span>
@@ -30,10 +30,19 @@
           <input id="search-input" type="text" placeholder="Search threads…" style="width:220px; padding:0.5rem 0.8rem; font-size:0.85rem;" />
           <button class="btn btn-ghost btn-sm" onclick="loadThreads()">Search</button>
         </div>
-        <a href="pages/new-thread.html" class="btn btn-primary btn-sm" id="new-thread-btn" style="display:none;">+ New Thread</a>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <select id="topic-batch-size" onchange="changeTopicBatchSize(this.value)" style="width:auto;">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="all">All</option>
+          </select>
+          <a href="pages/new-thread.html" class="btn btn-primary btn-sm" id="new-thread-btn" style="display:none;">+ New Thread</a>
+        </div>
       </div>
 
       <div id="thread-list"><div class="loading">Loading threads…</div></div>
+      <div id="topic-count-info" style="margin-top:0.6rem; font-size:0.82rem; color:var(--text-muted);"></div>
 
       <div style="display:flex; gap:0.5rem; justify-content:center; margin-top:2rem;" id="pagination"></div>
     </div>
@@ -57,23 +66,27 @@
   let currentPage = 1;
   let activeCategory = '';
   let activeTag = '';
+  let topicBatchSize = '10';
+  const editedLabel = (createdAt, updatedAt) =>
+    new Date(updatedAt).getTime() > new Date(createdAt).getTime() ? ' (edited)' : '';
 
   function renderNav() {
     const user = auth.getUser();
     const navAuth = document.getElementById('nav-auth');
     const newBtn = document.getElementById('new-thread-btn');
     if (user) {
-      navAuth.innerHTML = `<span style="color:var(--text-dim);font-size:0.85rem;">${user.username}</span> <a href="#" onclick="auth.logout()">Logout</a>`;
+      navAuth.innerHTML = `${user.role === 'admin' ? '<a href="pages/admin-dashboard.html">Admin Dashboard</a>' : ''} <span id="account-menu-slot"></span>`;
+      auth.renderAccountMenu('account-menu-slot', { basePath: '' });
       newBtn.style.display = 'inline-flex';
     } else {
-      navAuth.innerHTML = `<a href="pages/login.html">Login</a> <a href="pages/register.html" class="btn btn-primary btn-sm">Register</a>`;
+      auth.renderAccountMenu('nav-auth', { basePath: '' });
     }
   }
 
   async function loadThreads(page = 1) {
     currentPage = page;
     const search = document.getElementById('search-input').value;
-    let url = `/threads?page=${page}&limit=15`;
+    let url = `/threads?page=${page}&limit=${encodeURIComponent(topicBatchSize)}`;
     if (activeCategory) url += `&category=${activeCategory}`;
     if (activeTag) url += `&tag=${activeTag}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
@@ -81,7 +94,13 @@
     const list = document.getElementById('thread-list');
     list.innerHTML = '<div class="loading">Loading…</div>';
     try {
-      const data = await api.get(url);
+      const data = await api.get(url, auth.isLoggedIn());
+      const infoEl = document.getElementById('topic-count-info');
+      const shown = data.threads.length;
+      const totalLabel = topicBatchSize === 'all'
+        ? `${shown}`
+        : `${shown}${shown === Number(topicBatchSize) ? '+' : ''}`;
+      infoEl.textContent = `Showing ${shown} of ${totalLabel} topics`;
       if (!data.threads.length) { list.innerHTML = '<div class="empty">No threads found.</div>'; return; }
       list.innerHTML = data.threads.map(t => `
         <div class="thread-item ${t.is_pinned ? 'pinned' : ''}">
@@ -89,19 +108,25 @@
             <div class="thread-flags">
               ${t.is_pinned ? '<span class="flag flag-pinned">📌 Pinned</span>' : ''}
               ${t.is_locked ? '<span class="flag flag-locked">🔒 Locked</span>' : ''}
+              ${t.state === 'archived' ? '<span class="flag flag-archived">Archived</span>' : ''}
             </div>
             <div class="thread-title"><a href="pages/thread.html?slug=${t.slug}">${t.title}</a></div>
+            ${t.image_url ? `<div style="margin:0.6rem 0 0.4rem;"><img src="${t.image_url}" alt="Thread media" style="max-width:220px; width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
             <div class="thread-meta">
               <span>by <strong>${t.author_name}</strong></span>
               <span class="category-pill">${t.category_name}</span>
-              <span>${new Date(t.created_at).toLocaleDateString()}</span>
+              <span>${new Date(t.created_at).toLocaleDateString()}${editedLabel(t.created_at, t.updated_at)}</span>
               <span>💬 ${t.comment_count}</span>
               <span>👁 ${t.view_count}</span>
             </div>
           </div>
           <div class="thread-stats">
-            <span class="score">${t.vote_score > 0 ? '+' : ''}${t.vote_score}</span>
-            <span>votes</span>
+            <div class="vote-bar" style="justify-content:flex-end;">
+              <button class="vote-btn btn-sm" onclick="voteThread(${t.id}, 1)">▲</button>
+              <span class="vote-score">${t.vote_score > 0 ? '+' : ''}${t.vote_score}</span>
+              <button class="vote-btn btn-sm" onclick="voteThread(${t.id}, -1)">▼</button>
+            </div>
+            <span style="display:block; margin-top:0.25rem;">votes</span>
           </div>
         </div>
       `).join('');
@@ -140,7 +165,27 @@
     loadThreads(1);
   }
 
+  function changeTopicBatchSize(value) {
+    topicBatchSize = value;
+    currentPage = 1;
+    loadThreads(1);
+  }
+
+  async function voteThread(threadId, value) {
+    if (!auth.isLoggedIn()) {
+      window.location.href = 'pages/login.html';
+      return;
+    }
+    try {
+      await api.post('/vote', { target_type: 'thread', target_id: threadId, value }, true);
+      await loadThreads(currentPage);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
   document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadThreads(1); });
+  document.getElementById('topic-batch-size').value = topicBatchSize;
 
   renderNav();
   loadThreads();

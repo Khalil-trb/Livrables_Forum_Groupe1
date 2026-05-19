@@ -41,6 +41,7 @@ CREATE TABLE threads (
   title VARCHAR(255) NOT NULL,
   slug VARCHAR(255) UNIQUE NOT NULL,
   content TEXT NOT NULL,
+  image_url VARCHAR(500),
   author_id INT NOT NULL,
   category_id INT NOT NULL,
   is_pinned BOOLEAN DEFAULT FALSE,
@@ -66,6 +67,7 @@ CREATE TABLE thread_tags (
 CREATE TABLE comments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   content TEXT NOT NULL,
+  image_url VARCHAR(500),
   author_id INT NOT NULL,
   thread_id INT NOT NULL,
   parent_id INT DEFAULT NULL,

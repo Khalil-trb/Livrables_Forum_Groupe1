@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, optionalAuthenticate, authorize } = require('../middleware/auth');
 
 const auth = require('../controllers/authController');
 const threads = require('../controllers/threadController');
@@ -14,14 +14,14 @@ router.post('/auth/login', auth.login);
 router.get('/auth/me', authenticate, auth.getMe);
 
 // --- THREADS ---
-router.get('/threads', threads.getThreads);
-router.get('/threads/:slug', threads.getThread);
+router.get('/threads', optionalAuthenticate, threads.getThreads);
+router.get('/threads/:slug', optionalAuthenticate, threads.getThread);
 router.post('/threads', authenticate, threads.createThread);
 router.put('/threads/:id', authenticate, threads.updateThread);
 router.delete('/threads/:id', authenticate, threads.deleteThread);
 
 // --- COMMENTS ---
-router.get('/threads/:threadId/comments', comments.getComments);
+router.get('/threads/:threadId/comments', optionalAuthenticate, comments.getComments);
 router.post('/threads/:threadId/comments', authenticate, comments.createComment);
 router.put('/comments/:id', authenticate, comments.updateComment);
 router.delete('/comments/:id', authenticate, comments.deleteComment);
@@ -36,10 +36,12 @@ router.delete('/categories/:id', authenticate, authorize('admin'), cats.deleteCa
 
 // --- TAGS ---
 router.get('/tags', cats.getTags);
-router.post('/tags', authenticate, authorize('admin', 'moderator'), cats.createTag);
+router.post('/tags', authenticate, cats.createTag);
 
 // --- MODERATION ---
 router.get('/admin/users', authenticate, authorize('admin'), mod.getUsers);
+router.get('/admin/threads', authenticate, authorize('admin'), mod.getThreads);
+router.get('/admin/comments', authenticate, authorize('admin'), mod.getComments);
 router.patch('/admin/users/:id/ban', authenticate, authorize('admin'), mod.banUser);
 router.patch('/admin/users/:id/role', authenticate, authorize('admin'), mod.changeRole);
 router.patch('/admin/threads/:id/pin', authenticate, authorize('admin', 'moderator'), mod.pinThread);
