@@ -1,41 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard - Forum</title>
+  <title>Tableau Admin - Forum</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
 <nav>
   <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links" id="nav-links">
-    <a href="../index.html">&larr; Threads</a>
+    <a href="../index.html">&larr; Sujets</a>
     <span id="nav-auth"></span>
   </div>
 </nav>
 
 <div class="wide-container">
   <div class="hero">
-    <h1>Administration <span>Dashboard</span></h1>
-    <p>Manage topics, messages and user accounts.</p>
+    <h1>Tableau <span>d'administration</span></h1>
+    <p>Gérez les sujets, messages et comptes utilisateurs.</p>
   </div>
 
   <div id="alert"></div>
 
   <div class="card" style="margin-bottom:1rem;">
-    <h3 style="margin-bottom:0.8rem;">Topics</h3>
-    <div id="topics-list"><div class="loading">Loading topics...</div></div>
+    <h3 style="margin-bottom:0.8rem;">Sujets</h3>
+    <div id="topics-list"><div class="loading">Chargement des sujets...</div></div>
   </div>
 
   <div class="card" style="margin-bottom:1rem;">
     <h3 style="margin-bottom:0.8rem;">Messages</h3>
-    <div id="comments-list"><div class="loading">Loading messages...</div></div>
+    <div id="comments-list"><div class="loading">Chargement des messages...</div></div>
   </div>
 
   <div class="card">
-    <h3 style="margin-bottom:0.8rem;">Users</h3>
-    <div id="users-list"><div class="loading">Loading users...</div></div>
+    <h3 style="margin-bottom:0.8rem;">Utilisateurs</h3>
+    <div id="users-list"><div class="loading">Chargement des utilisateurs...</div></div>
   </div>
 </div>
 
@@ -79,7 +79,7 @@
     const data = await api.get('/admin/threads?limit=100', true);
     const list = document.getElementById('topics-list');
     if (!data.threads.length) {
-      list.innerHTML = '<div class="empty">No topics found.</div>';
+      list.innerHTML = '<div class="empty">Aucun sujet trouvé.</div>';
       return;
     }
     list.innerHTML = data.threads.map(t => `
@@ -88,18 +88,18 @@
           <div class="thread-title">${escapeHtml(t.title)}</div>
           <div class="thread-meta">
             <span>#${t.id}</span>
-            <span>by <strong>${escapeHtml(t.author_name)}</strong></span>
-            <span>state: ${threadState(t)}</span>
+            <span>par <strong>${escapeHtml(t.author_name)}</strong></span>
+            <span>état : ${threadState(t)}</span>
           </div>
         </div>
         <div style="display:flex; gap:0.4rem; align-items:center;">
           <select id="state-${t.id}" style="width:auto;">
-            <option value="open" ${threadState(t) === 'open' ? 'selected' : ''}>open</option>
-            <option value="closed" ${threadState(t) === 'closed' ? 'selected' : ''}>closed</option>
-            <option value="archived" ${threadState(t) === 'archived' ? 'selected' : ''}>archived</option>
+            <option value="open" ${threadState(t) === 'open' ? 'selected' : ''}>ouvert</option>
+            <option value="closed" ${threadState(t) === 'closed' ? 'selected' : ''}>fermé</option>
+            <option value="archived" ${threadState(t) === 'archived' ? 'selected' : ''}>archivé</option>
           </select>
-          <button class="btn btn-ghost btn-sm" onclick="changeThreadState(${t.id})">Update state</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteTopic(${t.id})">Delete</button>
+          <button class="btn btn-ghost btn-sm" onclick="changeThreadState(${t.id})">Mettre à jour</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTopic(${t.id})">Supprimer</button>
         </div>
       </div>
     `).join('');
@@ -109,7 +109,7 @@
     const data = await api.get('/admin/comments?limit=100', true);
     const list = document.getElementById('comments-list');
     if (!data.comments.length) {
-      list.innerHTML = '<div class="empty">No messages found.</div>';
+      list.innerHTML = '<div class="empty">Aucun message trouvé.</div>';
       return;
     }
     list.innerHTML = data.comments.map(c => `
@@ -118,11 +118,11 @@
           <div style="font-size:0.9rem; color:var(--text-dim);">${escapeHtml(c.content).slice(0, 180)}</div>
           <div class="thread-meta">
             <span>#${c.id}</span>
-            <span>by <strong>${escapeHtml(c.author_name)}</strong></span>
-            <span>topic: ${escapeHtml(c.thread_title)}</span>
+            <span>par <strong>${escapeHtml(c.author_name)}</strong></span>
+            <span>sujet : ${escapeHtml(c.thread_title)}</span>
           </div>
         </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteMessage(${c.id})">Delete message</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteMessage(${c.id})">Supprimer le message</button>
       </div>
     `).join('');
   }
@@ -131,7 +131,7 @@
     const data = await api.get('/admin/users?limit=100', true);
     const list = document.getElementById('users-list');
     if (!data.users.length) {
-      list.innerHTML = '<div class="empty">No users found.</div>';
+      list.innerHTML = '<div class="empty">Aucun utilisateur trouvé.</div>';
       return;
     }
     list.innerHTML = data.users.map(u => `
@@ -141,13 +141,13 @@
           <div class="thread-meta">
             <span>#${u.id}</span>
             <span>${escapeHtml(u.email)}</span>
-            <span>role: ${escapeHtml(u.role)}</span>
-            <span>${u.is_banned ? 'banned' : 'active'}</span>
+            <span>rôle : ${escapeHtml(u.role)}</span>
+            <span>${u.is_banned ? 'banni' : 'actif'}</span>
           </div>
         </div>
         ${u.role === 'admin'
-          ? '<span style="font-size:0.8rem; color:var(--text-muted);">Admin account</span>'
-          : `<button class="btn ${u.is_banned ? 'btn-ghost' : 'btn-danger'} btn-sm" onclick="toggleBan(${u.id}, ${u.is_banned ? 'false' : 'true'})">${u.is_banned ? 'Unban' : 'Ban'}</button>`
+          ? '<span style="font-size:0.8rem; color:var(--text-muted);">Compte admin</span>'
+          : `<button class="btn ${u.is_banned ? 'btn-ghost' : 'btn-danger'} btn-sm" onclick="toggleBan(${u.id}, ${u.is_banned ? 'false' : 'true'})">${u.is_banned ? 'Débannir' : 'Bannir'}</button>`
         }
       </div>
     `).join('');
@@ -157,7 +157,7 @@
     const state = document.getElementById(`state-${threadId}`).value;
     try {
       await api.put(`/threads/${threadId}`, { state }, true);
-      setAlert('Topic state updated.');
+      setAlert('État du sujet mis à jour.');
       await loadTopics();
     } catch (e) {
       setAlert(e.message, true);
@@ -165,10 +165,10 @@
   }
 
   async function deleteTopic(threadId) {
-    if (!confirm('Delete this topic permanently?')) return;
+    if (!confirm('Supprimer définitivement ce sujet ?')) return;
     try {
       await api.delete(`/threads/${threadId}`, true);
-      setAlert('Topic deleted.');
+      setAlert('Sujet supprimé.');
       await loadTopics();
     } catch (e) {
       setAlert(e.message, true);
@@ -176,10 +176,10 @@
   }
 
   async function deleteMessage(commentId) {
-    if (!confirm('Delete this message?')) return;
+    if (!confirm('Supprimer ce message ?')) return;
     try {
       await api.delete(`/comments/${commentId}`, true);
-      setAlert('Message deleted.');
+      setAlert('Message supprimé.');
       await loadComments();
     } catch (e) {
       setAlert(e.message, true);
@@ -187,10 +187,10 @@
   }
 
   async function toggleBan(userId, ban) {
-    if (!confirm(ban ? 'Ban this user?' : 'Unban this user?')) return;
+    if (!confirm(ban ? 'Bannir cet utilisateur ?' : 'Débannir cet utilisateur ?')) return;
     try {
       await api.patch(`/admin/users/${userId}/ban`, { ban }, true);
-      setAlert(ban ? 'User banned.' : 'User unbanned.');
+      setAlert(ban ? 'Utilisateur banni.' : 'Utilisateur débanni.');
       await loadUsers();
     } catch (e) {
       setAlert(e.message, true);

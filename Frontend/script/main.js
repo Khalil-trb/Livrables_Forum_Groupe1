@@ -24,7 +24,7 @@ async function loadTopics() {
         const data = await api('GET', '/api/threads');
         const threads = data.threads || [];
         if (!threads.length) {
-            list.innerHTML = '<p>No topics yet.</p>';
+            list.innerHTML = '<p>Aucun sujet pour le moment.</p>';
             return;
         }
 
@@ -36,7 +36,7 @@ async function loadTopics() {
         `).join('');
     } catch (error) {
         console.error(error);
-        list.innerHTML = '<p>Unable to load topics right now.</p>';
+        list.innerHTML = '<p>Impossible de charger les sujets pour le moment.</p>';
     }
 }
 

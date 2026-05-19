@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register - Forum</title>
+  <title>Inscription - Forum</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
@@ -11,7 +11,7 @@
 <nav>
   <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links">
-    <a href="../index.html">&larr; Back</a>
+    <a href="../index.html">&larr; Retour</a>
   </div>
 </nav>
 
@@ -25,25 +25,25 @@
     <div class="card">
       <div id="alert"></div>
       <div class="form-group">
-        <label>Username</label>
+        <label>Nom d'utilisateur</label>
         <input type="text" id="username" placeholder="johndoe" />
       </div>
       <div class="form-group">
-        <label>Email</label>
+        <label>E-mail</label>
         <input type="email" id="email" placeholder="you@example.com" />
       </div>
       <div class="form-group">
-        <label>Password</label>
+        <label>Mot de passe</label>
         <input type="password" id="password" placeholder="Mot de passe" />
         <small style="display:block; margin-top:0.4rem; color:var(--text-muted); font-size:0.78rem;">
           Au moins 8 caractères, une lettre majuscule et un caractère spécial.
         </small>
       </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="register()">Create Account</button>
+      <button class="btn btn-primary" style="width:100%;" onclick="register()">Créer un compte</button>
     </div>
 
     <p style="text-align:center; margin-top:1rem; font-size:0.875rem; color:var(--text-muted);">
-      Already registered? <a href="login.html">Login</a>
+      Déjà inscrit ? <a href="login.html">Connexion</a>
     </p>
   </div>
 </div>
@@ -63,19 +63,19 @@
     alertEl.innerHTML = '';
 
     if (!username || !email || !password) {
-      alertEl.innerHTML = '<div class="alert alert-error">Please fill in all fields.</div>';
+      alertEl.innerHTML = '<div class="alert alert-error">Veuillez remplir tous les champs.</div>';
       return;
     }
     if (!userRegex.test(username)) {
-      alertEl.innerHTML = '<div class="alert alert-error">Username must contain only letters and numbers.</div>';
+      alertEl.innerHTML = '<div class="alert alert-error">Le nom d\'utilisateur doit contenir uniquement des lettres et des chiffres.</div>';
       return;
     }
     if (!emailRegex.test(email)) {
-      alertEl.innerHTML = '<div class="alert alert-error">Please enter a valid email address.</div>';
+      alertEl.innerHTML = '<div class="alert alert-error">Veuillez saisir une adresse e-mail valide.</div>';
       return;
     }
     if (!hasMinLen || !hasUpper || !hasSpecial) {
-      alertEl.innerHTML = '<div class="alert alert-error">Password must be at least 8 characters and include one uppercase letter and one special character.</div>';
+      alertEl.innerHTML = '<div class="alert alert-error">Le mot de passe doit contenir au moins 8 caractères, une majuscule et un caractère spécial.</div>';
       return;
     }
 
@@ -90,3 +90,5 @@
 </script>
 </body>
 </html>
+
+

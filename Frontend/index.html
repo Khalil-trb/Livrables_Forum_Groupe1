@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,51 +11,49 @@
 <nav>
   <a class="nav-brand" href="index.html"><img src="img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links" id="nav-links">
-    <a href="index.html">Threads</a>
+    <a href="index.html">Sujets</a>
     <span id="nav-auth"></span>
   </div>
 </nav>
 
 <div class="wide-container">
   <div class="hero">
-    <h1>The <span>Discussion</span> Starts Here</h1>
-    <p>Browse threads, share ideas, and join the conversation.</p>
+    <h1>La <span>Discussion</span> Commence Ici</h1>
+    <p>Parcourez les sujets, partagez vos idees et participez a la conversation.</p>
   </div>
 
   <div class="layout">
-    <!-- MAIN -->
     <div>
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
         <div style="display:flex; gap:0.5rem;">
-          <input id="search-input" type="text" placeholder="Search threads…" style="width:220px; padding:0.5rem 0.8rem; font-size:0.85rem;" />
-          <button class="btn btn-ghost btn-sm" onclick="loadThreads()">Search</button>
+          <input id="search-input" type="text" placeholder="Rechercher des sujets..." style="width:220px; padding:0.5rem 0.8rem; font-size:0.85rem;" />
+          <button class="btn btn-ghost btn-sm" onclick="loadThreads()">Rechercher</button>
         </div>
         <div style="display:flex; gap:0.5rem; align-items:center;">
           <select id="topic-batch-size" onchange="changeTopicBatchSize(this.value)" style="width:auto;">
             <option value="10">10</option>
             <option value="20">20</option>
             <option value="30">30</option>
-            <option value="all">All</option>
+            <option value="all">Tout</option>
           </select>
-          <a href="pages/new-thread.html" class="btn btn-primary btn-sm" id="new-thread-btn" style="display:none;">+ New Thread</a>
+          <a href="pages/new-thread.html" class="btn btn-primary btn-sm" id="new-thread-btn" style="display:none;">+ Nouveau sujet</a>
         </div>
       </div>
 
-      <div id="thread-list"><div class="loading">Loading threads…</div></div>
+      <div id="thread-list"><div class="loading">Chargement des sujets...</div></div>
       <div id="topic-count-info" style="margin-top:0.6rem; font-size:0.82rem; color:var(--text-muted);"></div>
 
       <div style="display:flex; gap:0.5rem; justify-content:center; margin-top:2rem;" id="pagination"></div>
     </div>
 
-    <!-- SIDEBAR -->
     <div>
       <div class="card" style="margin-bottom:1rem;">
         <div style="font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.75rem;">Categories</div>
-        <div id="category-list"><div class="loading" style="padding:1rem 0;">…</div></div>
+        <div id="category-list"><div class="loading" style="padding:1rem 0;">...</div></div>
       </div>
       <div class="card">
         <div style="font-size:0.75rem; font-weight:500; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.75rem;">Tags</div>
-        <div id="tag-list"><div class="loading" style="padding:1rem 0;">…</div></div>
+        <div id="tag-list"><div class="loading" style="padding:1rem 0;">...</div></div>
       </div>
     </div>
   </div>
@@ -68,14 +66,14 @@
   let activeTag = '';
   let topicBatchSize = '10';
   const editedLabel = (createdAt, updatedAt) =>
-    new Date(updatedAt).getTime() > new Date(createdAt).getTime() ? ' (edited)' : '';
+    new Date(updatedAt).getTime() > new Date(createdAt).getTime() ? ' (modifie)' : '';
 
   function renderNav() {
     const user = auth.getUser();
     const navAuth = document.getElementById('nav-auth');
     const newBtn = document.getElementById('new-thread-btn');
     if (user) {
-      navAuth.innerHTML = `${user.role === 'admin' ? '<a href="pages/admin-dashboard.html">Admin Dashboard</a>' : ''} <span id="account-menu-slot"></span>`;
+      navAuth.innerHTML = `${user.role === 'admin' ? '<a href="pages/admin-dashboard.html">Tableau admin</a>' : ''} <span id="account-menu-slot"></span>`;
       auth.renderAccountMenu('account-menu-slot', { basePath: '' });
       newBtn.style.display = 'inline-flex';
     } else {
@@ -92,32 +90,30 @@
     if (search) url += `&search=${encodeURIComponent(search)}`;
 
     const list = document.getElementById('thread-list');
-    list.innerHTML = '<div class="loading">Loading…</div>';
+    list.innerHTML = '<div class="loading">Chargement...</div>';
     try {
       const data = await api.get(url, auth.isLoggedIn());
       const infoEl = document.getElementById('topic-count-info');
       const shown = data.threads.length;
-      const totalLabel = topicBatchSize === 'all'
-        ? `${shown}`
-        : `${shown}${shown === Number(topicBatchSize) ? '+' : ''}`;
-      infoEl.textContent = `Showing ${shown} of ${totalLabel} topics`;
-      if (!data.threads.length) { list.innerHTML = '<div class="empty">No threads found.</div>'; return; }
+      const totalLabel = topicBatchSize === 'all' ? `${shown}` : `${shown}${shown === Number(topicBatchSize) ? '+' : ''}`;
+      infoEl.textContent = `${shown} sujet(s) affiche(s) sur ${totalLabel}`;
+      if (!data.threads.length) { list.innerHTML = '<div class="empty">Aucun sujet trouve.</div>'; return; }
       list.innerHTML = data.threads.map(t => `
         <div class="thread-item ${t.is_pinned ? 'pinned' : ''}">
           <div>
             <div class="thread-flags">
-              ${t.is_pinned ? '<span class="flag flag-pinned">📌 Pinned</span>' : ''}
-              ${t.is_locked ? '<span class="flag flag-locked">🔒 Locked</span>' : ''}
-              ${t.state === 'archived' ? '<span class="flag flag-archived">Archived</span>' : ''}
+              ${t.is_pinned ? '<span class="flag flag-pinned">Epingle</span>' : ''}
+              ${t.is_locked ? '<span class="flag flag-locked">Verrouille</span>' : ''}
+              ${t.state === 'archived' ? '<span class="flag flag-archived">Archive</span>' : ''}
             </div>
             <div class="thread-title"><a href="pages/thread.html?slug=${t.slug}">${t.title}</a></div>
-            ${t.image_url ? `<div style="margin:0.6rem 0 0.4rem;"><img src="${t.image_url}" alt="Thread media" style="max-width:220px; width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
+            ${t.image_url ? `<div style="margin:0.6rem 0 0.4rem;"><img src="${t.image_url}" alt="Image du sujet" style="max-width:220px; width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
             <div class="thread-meta">
-              <span>by <strong>${t.author_name}</strong></span>
+              <span>par <strong>${t.author_name}</strong></span>
               <span class="category-pill">${t.category_name}</span>
               <span>${new Date(t.created_at).toLocaleDateString()}${editedLabel(t.created_at, t.updated_at)}</span>
-              <span>💬 ${t.comment_count}</span>
-              <span>👁 ${t.view_count}</span>
+              <span>Commentaires: ${t.comment_count}</span>
+              <span>Vues: ${t.view_count}</span>
             </div>
           </div>
           <div class="thread-stats">
@@ -139,7 +135,7 @@
     try {
       const data = await api.get('/categories');
       const el = document.getElementById('category-list');
-      el.innerHTML = `<div style="margin-bottom:0.4rem;"><a href="#" onclick="filterCategory('')" style="font-size:0.85rem; color:var(--text-dim);">All categories</a></div>` +
+      el.innerHTML = `<div style="margin-bottom:0.4rem;"><a href="#" onclick="filterCategory('')" style="font-size:0.85rem; color:var(--text-dim);">Toutes les categories</a></div>` +
         data.categories.map(c => `
           <div style="margin-bottom:0.3rem; display:flex; justify-content:space-between; align-items:center;">
             <a href="#" onclick="filterCategory('${c.slug}')" style="font-size:0.85rem; color:var(--text-dim);">${c.name}</a>

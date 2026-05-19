@@ -203,3 +203,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
   .nav-brand img { height: 28px; }
   .wide-container, .container { padding: 1.25rem 0.9rem; }
 }
+
+.account-menu-slot {
+  background-color: white;
+} 

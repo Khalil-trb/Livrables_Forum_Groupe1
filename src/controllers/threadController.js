@@ -126,8 +126,14 @@ const createThread = async (req, res) => {
   const { title, content, category_id, tags, state, image_url } = req.body;
   const normalizedState = normalizeState(state);
   const normalizedImageUrl = normalizeMediaUrl(image_url);
-  if (!title || !content || !category_id) {
-    return res.status(400).json({ error: 'Title, content and category are required' });
+  const cleanTitle = (title || '').trim();
+  const cleanContent = (content || '').trim();
+
+  if (!cleanTitle || !category_id) {
+    return res.status(400).json({ error: 'Title and category are required' });
+  }
+  if (!cleanContent && !normalizedImageUrl) {
+    return res.status(400).json({ error: 'Add text content or an image URL' });
   }
   if (image_url && !normalizedImageUrl) {
     return res.status(400).json({ error: 'Invalid image URL. Use a valid http(s) URL' });
@@ -144,7 +150,7 @@ const createThread = async (req, res) => {
     try {
       const [insertResult] = await db.query(
         'INSERT INTO threads (title, slug, content, image_url, author_id, category_id, is_locked, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [title, slug, content, normalizedImageUrl, req.user.id, category_id, isLocked, isArchived]
+        [cleanTitle, slug, cleanContent, normalizedImageUrl, req.user.id, category_id, isLocked, isArchived]
       );
       result = insertResult;
     } catch (insertErr) {
@@ -152,7 +158,7 @@ const createThread = async (req, res) => {
       if (insertErr.code === 'ER_BAD_FIELD_ERROR' && String(insertErr.message).includes('image_url')) {
         const [insertFallback] = await db.query(
           'INSERT INTO threads (title, slug, content, author_id, category_id, is_locked, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          [title, slug, content, req.user.id, category_id, isLocked, isArchived]
+          [cleanTitle, slug, cleanContent, req.user.id, category_id, isLocked, isArchived]
         );
         result = insertFallback;
       } else {
@@ -195,18 +201,25 @@ const updateThread = async (req, res) => {
     const nextState = normalizedState || (thread.is_deleted ? 'archived' : (thread.is_locked ? 'closed' : 'open'));
     const nextLocked = nextState === 'closed';
     const nextArchived = nextState === 'archived';
+    const nextTitle = title === undefined ? thread.title : String(title).trim();
+    const nextContent = content === undefined ? thread.content : String(content).trim();
+    const nextCategoryId = category_id || thread.category_id;
+    if (!nextTitle) return res.status(400).json({ error: 'Title is required' });
+    if (!nextContent && !normalizedImageUrl) {
+      return res.status(400).json({ error: 'Add text content or an image URL' });
+    }
 
     try {
       await db.query(
         'UPDATE threads SET title = ?, content = ?, image_url = ?, category_id = ?, is_locked = ?, is_deleted = ? WHERE id = ?',
-        [title || thread.title, content || thread.content, normalizedImageUrl, category_id || thread.category_id, nextLocked, nextArchived, req.params.id]
+        [nextTitle, nextContent, normalizedImageUrl, nextCategoryId, nextLocked, nextArchived, req.params.id]
       );
     } catch (updateErr) {
       // Backward compatibility when DB migration for image_url has not been applied yet.
       if (updateErr.code === 'ER_BAD_FIELD_ERROR' && String(updateErr.message).includes('image_url')) {
         await db.query(
           'UPDATE threads SET title = ?, content = ?, category_id = ?, is_locked = ?, is_deleted = ? WHERE id = ?',
-          [title || thread.title, content || thread.content, category_id || thread.category_id, nextLocked, nextArchived, req.params.id]
+          [nextTitle, nextContent, nextCategoryId, nextLocked, nextArchived, req.params.id]
         );
       } else {
         throw updateErr;

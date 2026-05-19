@@ -142,7 +142,7 @@ const auth = {
     const registerHref = `${basePath}pages/register.html`;
 
     if (!user) {
-      container.innerHTML = `<a href="${loginHref}">Login</a> <a href="${registerHref}" class="btn btn-primary btn-sm">Register</a>`;
+      container.innerHTML = `<a href="${loginHref}">Connexion</a> <a href="${registerHref}" class="btn btn-primary btn-sm">Inscription</a>`;
       return;
     }
 
@@ -150,16 +150,16 @@ const auth = {
     container.innerHTML = `
       <details style="position:relative;">
         <summary style="list-style:none; cursor:pointer; color:var(--text-dim); font-size:0.85rem;">
-          ${user.username} ▾
+          ${user.username} v
         </summary>
-        <div style="position:absolute; right:0; top:1.8rem; min-width:240px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:0.6rem; z-index:999;">
-          <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:0.4rem;">Current account</div>
-          <div style="font-size:0.84rem; margin-bottom:0.6rem;">${user.username} (${user.role})</div>
-          ${switchable.length ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:0.35rem;">Switch account</div>` : ''}
+        <div style="position:absolute; right:0; top:1.8rem; min-width:240px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:0.6rem; z-index:999;">
+          <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:0.4rem;">Compte actuel</div>
+          <div style="font-size:0.84rem; margin-bottom:0.6rem;">${user.username} v
+          ${switchable.length ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:0.35rem;">Changer de compte</div>` : ''}
           ${switchable.map((a) => `<button type="button" data-switch-account="${a.id}" style="display:block; width:100%; text-align:left; background:none; color:var(--text-dim); border:1px solid var(--line); border-radius:8px; padding:0.35rem 0.5rem; margin-bottom:0.35rem; cursor:pointer;">${a.user.username} (${a.user.role})</button>`).join('')}
           <div style="display:flex; gap:0.45rem; margin-top:0.4rem;">
-            <a href="${loginHref}" style="font-size:0.8rem;">Add account</a>
-            <button type="button" data-logout-current style="margin-left:auto; background:none; border:none; color:var(--accent2); cursor:pointer; font-size:0.8rem;">Logout current</button>
+            <a href="${loginHref}" style="font-size:0.8rem;">Ajouter un compte</a>
+            <button type="button" data-logout-current style="margin-left:auto; background:none; border:none; color:var(--accent2); cursor:pointer; font-size:0.8rem;">Deconnexion du compte</button>
           </div>
         </div>
       </details>
@@ -171,3 +171,4 @@ const auth = {
     container.querySelector('[data-logout-current]')?.addEventListener('click', () => auth.logoutCurrent());
   }
 };
+

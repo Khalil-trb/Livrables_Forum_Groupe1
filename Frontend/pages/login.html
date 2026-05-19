@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Forum</title>
+  <title>Connexion - Forum</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
@@ -11,32 +11,32 @@
 <nav>
   <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links">
-    <a href="../index.html">&larr; Back</a>
+    <a href="../index.html">&larr; Retour</a>
   </div>
 </nav>
 
 <div class="container" style="max-width:420px;">
   <div style="padding-top:3rem;">
     <div class="page-header">
-      <h2>Welcome back</h2>
-      <p>Log in to your account</p>
+      <h2>Bon retour</h2>
+      <p>Connectez-vous à votre compte</p>
     </div>
 
     <div class="card">
       <div id="alert"></div>
       <div class="form-group">
-        <label>Identifier</label>
-        <input type="text" id="identifier" placeholder="username or email" />
+        <label>Identifiant</label>
+        <input type="text" id="identifier" placeholder="nom d'utilisateur ou email" />
       </div>
       <div class="form-group">
-        <label>Password</label>
+        <label>Mot de passe</label>
         <input type="password" id="password" placeholder="********" />
       </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="login()">Login</button>
+      <button class="btn btn-primary" style="width:100%;" onclick="login()">Connexion</button>
     </div>
 
     <p style="text-align:center; margin-top:1rem; font-size:0.875rem; color:var(--text-muted);">
-      No account? <a href="register.html">Register</a>
+      Pas de compte ? <a href="register.html">Inscription</a>
     </p>
   </div>
 </div>
@@ -50,7 +50,7 @@
     alertEl.innerHTML = '';
 
     if (!identifier || !password) {
-      alertEl.innerHTML = '<div class="alert alert-error">Please fill in all fields.</div>';
+      alertEl.innerHTML = '<div class="alert alert-error">Veuillez remplir tous les champs.</div>';
       return;
     }
     try {

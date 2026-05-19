@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Thread - Forum</title>
+  <title>Sujet - Forum</title>
   <link rel="stylesheet" href="../css/style.css" />
 </head>
 <body>
@@ -11,29 +11,29 @@
 <nav>
   <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
   <div class="nav-links" id="nav-links">
-    <a href="../index.html">&larr; Threads</a>
+    <a href="../index.html">&larr; Sujets</a>
     <span id="nav-auth"></span>
   </div>
 </nav>
 
 <div class="container">
-  <div id="thread-content"><div class="loading">Loading thread...</div></div>
+  <div id="thread-content"><div class="loading">Chargement du sujet...</div></div>
   <div id="comments-section" style="display:none;">
     <hr />
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
-      <h3 style="font-family:var(--font-display); font-size:1.3rem;">Replies</h3>
+      <h3 style="font-family:var(--font-display); font-size:1.3rem;">Réponses</h3>
       <div style="display:flex; gap:0.5rem; align-items:center;">
         <select id="comment-sort" onchange="changeCommentSort(this.value)" style="width:auto; min-width:170px;">
-          <option value="newest">Newest first</option>
-          <option value="chronological">Chronological</option>
-          <option value="likes">Most liked</option>
-          <option value="dislikes">Most disliked</option>
+          <option value="newest">Les plus récentes</option>
+          <option value="chronological">Chronologique</option>
+          <option value="likes">Les plus aimées</option>
+          <option value="dislikes">Les moins aimées</option>
         </select>
         <select id="comment-batch-size" onchange="changeCommentBatchSize(this.value)" style="width:auto;">
           <option value="10">10</option>
           <option value="20">20</option>
           <option value="30">30</option>
-          <option value="all">All</option>
+          <option value="all">Tout</option>
         </select>
       </div>
     </div>
@@ -56,13 +56,13 @@
   let editCategories = [];
   let editTags = [];
   const editedLabel = (createdAt, updatedAt) =>
-    new Date(updatedAt).getTime() > new Date(createdAt).getTime() ? ' (edited)' : '';
+    new Date(updatedAt).getTime() > new Date(createdAt).getTime() ? ' (modifié)' : '';
 
   function renderNav() {
     const user = auth.getUser();
     const navAuth = document.getElementById('nav-auth');
     if (user) {
-      navAuth.innerHTML = `${user.role === 'admin' ? '<a href="admin-dashboard.html">Admin Dashboard</a>' : ''} <span id="account-menu-slot"></span>`;
+      navAuth.innerHTML = `${user.role === 'admin' ? '<a href="admin-dashboard.html">Tableau admin</a>' : ''} <span id="account-menu-slot"></span>`;
       auth.renderAccountMenu('account-menu-slot', { basePath: '../' });
     } else {
       auth.renderAccountMenu('nav-auth', { basePath: '../' });
@@ -80,7 +80,7 @@
 
   async function loadThread() {
     if (!slug) {
-      document.getElementById('thread-content').innerHTML = '<div class="alert alert-error">Thread not found.</div>';
+      document.getElementById('thread-content').innerHTML = '<div class="alert alert-error">Sujet introuvable.</div>';
       return;
     }
 
@@ -96,9 +96,9 @@
       document.getElementById('thread-content').innerHTML = `
         <div style="margin-bottom:2rem;">
           <div class="thread-flags" style="margin-bottom:0.5rem;">
-            ${t.is_pinned ? '<span class="flag flag-pinned">Pinned</span>' : ''}
-            ${t.is_locked ? '<span class="flag flag-locked">Locked</span>' : ''}
-            ${t.state === 'archived' ? '<span class="flag flag-locked">Archived</span>' : ''}
+            ${t.is_pinned ? '<span class="flag flag-pinned">Épinglé</span>' : ''}
+            ${t.is_locked ? '<span class="flag flag-locked">Verrouillé</span>' : ''}
+            ${t.state === 'archived' ? '<span class="flag flag-locked">Archivé</span>' : ''}
           </div>
           ${showInlineEdit
             ? `<input id="edit-title" type="text" value="${escapeHtml(t.title)}" style="width:100%; font-family:var(--font-display); font-size:clamp(1.5rem,4vw,2.5rem); line-height:1.2; letter-spacing:-0.02em; margin-bottom:0.75rem;" />`
@@ -106,30 +106,30 @@
           }
           <div style="display:flex; gap:1.25rem; align-items:center; flex-wrap:wrap; margin-bottom:1.5rem;">
             <div class="thread-meta">
-              <span>by <strong>${t.author_name}</strong> <span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span></span>
+              <span>par <strong>${t.author_name}</strong> <span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span></span>
               <span class="category-pill">${t.category_name}</span>
               <span>${new Date(t.created_at).toLocaleDateString()}${editedLabel(t.created_at, t.updated_at)}</span>
-              <span>${t.view_count} views</span>
+              <span>${t.view_count} vues</span>
             </div>
           </div>
           ${showInlineEdit
             ? `
               <textarea id="edit-content" style="width:100%; min-height:220px; font-size:0.95rem; line-height:1.8; color:var(--text-dim); white-space:pre-wrap; margin-bottom:1rem;">${escapeHtml(t.content)}</textarea>
               <div style="margin-bottom:1rem;">
-                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">Image / GIF URL</label>
+                <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">URL image / GIF</label>
                 <input id="edit-image-url" type="url" value="${escapeHtml(t.image_url || '')}" placeholder="https://example.com/image.gif" />
               </div>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
                 <div>
-                  <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">Category</label>
+                  <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">Catégorie</label>
                   <select id="edit-category">${renderCategoryOptions(t.category_id)}</select>
                 </div>
                 <div>
-                  <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">State</label>
+                  <label style="display:block; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.3rem;">État</label>
                   <select id="edit-state">
-                    <option value="open" ${t.state === 'open' ? 'selected' : ''}>Open</option>
-                    <option value="closed" ${t.state === 'closed' ? 'selected' : ''}>Closed</option>
-                    <option value="archived" ${t.state === 'archived' ? 'selected' : ''}>Archived</option>
+                    <option value="open" ${t.state === 'open' ? 'selected' : ''}>Ouvert</option>
+                    <option value="closed" ${t.state === 'closed' ? 'selected' : ''}>Fermé</option>
+                    <option value="archived" ${t.state === 'archived' ? 'selected' : ''}>Archivé</option>
                   </select>
                 </div>
               </div>
@@ -140,7 +140,7 @@
             `
             : `
               <div style="font-size:0.95rem; line-height:1.8; color:var(--text-dim); white-space:pre-wrap; margin-bottom:1rem;">${t.content}</div>
-              ${t.image_url ? `<div style="margin-bottom:1.5rem;"><img src="${escapeHtml(t.image_url)}" alt="Thread media" style="max-width:100%; border-radius:12px; border:1px solid var(--line);" /></div>` : ''}
+              ${t.image_url ? `<div style="margin-bottom:1.5rem;"><img src="${escapeHtml(t.image_url)}" alt="Image du sujet" style="max-width:100%; border-radius:12px; border:1px solid var(--line);" /></div>` : ''}
             `
           }
           <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; justify-content:space-between;">
@@ -155,10 +155,10 @@
             ${canManageThread(t, user) ? `
               <div style="display:flex; gap:0.5rem;">
                 ${showInlineEdit
-                  ? '<button class="btn btn-ghost btn-sm" onclick="cancelEditThread()">Cancel Edit</button><button class="btn btn-primary btn-sm" onclick="saveThreadEdit()">Save</button>'
-                  : '<button class="btn btn-ghost btn-sm" onclick="startEditThread()">Edit Topic</button>'
+                  ? '<button class="btn btn-ghost btn-sm" onclick="cancelEditThread()">Annuler</button><button class="btn btn-primary btn-sm" onclick="saveThreadEdit()">Enregistrer</button>'
+                  : '<button class="btn btn-ghost btn-sm" onclick="startEditThread()">Modifier le sujet</button>'
                 }
-                <button class="btn btn-danger btn-sm" onclick="deleteThread()">Delete Topic</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteThread()">Supprimer le sujet</button>
               </div>
             ` : ''}
           </div>
@@ -185,9 +185,9 @@
         ? data.comments
         : data.comments.slice(0, Number(commentBatchSize));
       const infoEl = document.getElementById('comment-count-info');
-      if (infoEl) infoEl.textContent = `Showing ${limitedComments.length} of ${data.comments.length} messages`;
+      if (infoEl) infoEl.textContent = `${limitedComments.length} message(s) affiché(s) sur ${data.comments.length}`;
       if (!limitedComments.length) {
-        el.innerHTML = '<div class="empty" style="padding:1.5rem 0;">No replies yet. Be the first!</div>';
+        el.innerHTML = '<div class="empty" style="padding:1.5rem 0;">Aucune réponse pour le moment. Soyez le premier !</div>';
         return;
       }
       el.innerHTML = limitedComments.map(c => renderComment(c)).join('');
@@ -227,7 +227,7 @@
             `
             : `
               <div>${c.content}</div>
-              ${c.image_url ? `<div style="margin-top:0.6rem;"><img src="${escapeHtml(c.image_url)}" alt="Comment media" style="max-width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
+              ${c.image_url ? `<div style="margin-top:0.6rem;"><img src="${escapeHtml(c.image_url)}" alt="Image du commentaire" style="max-width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
             `
           }
         </div>
@@ -237,13 +237,13 @@
             <span class="vote-score" id="score-comment-${c.id}">${c.vote_score}</span>
             <button class="vote-btn btn-sm" onclick="vote('comment', ${c.id}, -1)">▼</button>
           </div>
-          ${auth.isLoggedIn() ? `<button class="comment-reply-btn" onclick="setReply(${c.id})">Reply</button>` : ''}
+          ${auth.isLoggedIn() ? `<button class="comment-reply-btn" onclick="setReply(${c.id})">Répondre</button>` : ''}
           ${user && user.id === c.author_id && editingCommentId !== c.id
-            ? `<button class="comment-reply-btn" onclick="startEditComment(${c.id})">Edit</button>` : ''}
+            ? `<button class="comment-reply-btn" onclick="startEditComment(${c.id})">Modifier</button>` : ''}
           ${user && user.id === c.author_id && editingCommentId === c.id
-            ? `<button class="comment-reply-btn" onclick="saveCommentEdit(${c.id})">Save</button> <button class="comment-reply-btn" onclick="cancelEditComment()">Cancel</button>` : ''}
+            ? `<button class="comment-reply-btn" onclick="saveCommentEdit(${c.id})">Enregistrer</button> <button class="comment-reply-btn" onclick="cancelEditComment()">Annuler</button>` : ''}
           ${user && (user.id === c.author_id || canManageThread(currentThread, user))
-            ? `<button class="comment-reply-btn" style="color:var(--accent2)" onclick="deleteComment(${c.id})">Delete</button>` : ''}
+            ? `<button class="comment-reply-btn" style="color:var(--accent2)" onclick="deleteComment(${c.id})">Supprimer</button>` : ''}
         </div>
         ${c.replies?.length ? `<div class="replies">${c.replies.map(r => renderComment(r, depth + 1)).join('')}</div>` : ''}
       </div>
@@ -255,25 +255,25 @@
     const user = auth.getUser();
 
     if (!auth.isLoggedIn()) {
-      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;"><a href="login.html">Login</a> to post a reply.</p>`;
+      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;"><a href="login.html">Connexion</a> pour répondre.</p>`;
       return;
     }
 
     if (currentThread && !canReplyOnLocked(currentThread, user)) {
-      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;">This thread is locked. Only the creator or an admin can post.</p>`;
+      el.innerHTML = `<p style="color:var(--text-muted); font-size:0.875rem;">Ce sujet est verrouillé. Seul l'auteur ou un admin peut répondre.</p>`;
       return;
     }
 
     el.innerHTML = `
       <div class="card" style="margin-top:1rem;">
-        ${parentId ? `<div style="font-size:0.8rem; color:var(--accent); margin-bottom:0.75rem;">Replying to comment <button onclick="setReply(null)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.8rem;">cancel</button></div>` : '<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Leave a reply</div>'}
+        ${parentId ? `<div style="font-size:0.8rem; color:var(--accent); margin-bottom:0.75rem;">Réponse au commentaire <button onclick="setReply(null)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.8rem;">annuler</button></div>` : '<div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">Laisser une réponse</div>'}
         <div class="form-group">
-          <textarea id="reply-content" placeholder="Write your reply..."></textarea>
+          <textarea id="reply-content" placeholder="Écrivez votre réponse..."></textarea>
         </div>
         <div class="form-group">
-          <input id="reply-image-url" type="url" placeholder="Image / GIF URL (optional)" />
+          <input id="reply-image-url" type="url" placeholder="URL image / GIF (optionnel)" />
         </div>
-        <button class="btn btn-primary btn-sm" onclick="submitReply(${parentId})">Post Reply</button>
+        <button class="btn btn-primary btn-sm" onclick="submitReply(${parentId})">Publier la réponse</button>
       </div>
     `;
   }
@@ -310,7 +310,7 @@
     const content = document.getElementById(`edit-comment-${id}`)?.value.trim();
     const image_url = document.getElementById(`edit-comment-image-${id}`)?.value.trim();
     if (!content) {
-      alert('Comment cannot be empty.');
+      alert('Le commentaire ne peut pas être vide.');
       return;
     }
     try {
@@ -323,7 +323,7 @@
   }
 
   async function deleteComment(id) {
-    if (!confirm('Delete this comment?')) return;
+    if (!confirm('Supprimer ce commentaire ?')) return;
     try {
       await api.delete(`/comments/${id}`, true);
       loadComments();
@@ -334,7 +334,7 @@
 
   async function deleteThread() {
     if (!currentThread) return;
-    if (!confirm('Delete this topic?')) return;
+    if (!confirm('Supprimer ce sujet ?')) return;
     try {
       await api.delete(`/threads/${currentThread.id}`, true);
       window.location.href = '../index.html';
@@ -363,12 +363,16 @@
     const category_id = Number(document.getElementById('edit-category')?.value);
     const state = document.getElementById('edit-state')?.value;
     const tags = Array.from(document.getElementById('edit-tags')?.selectedOptions || []).map(o => Number(o.value));
-    if (!title || !content) {
-      alert('Title and content cannot be empty.');
+    if (!title) {
+      alert('Le titre ne peut pas être vide.');
+      return;
+    }
+    if (!content && !image_url) {
+      alert('Ajoutez un texte ou une URL d\'image.');
       return;
     }
     if (!category_id) {
-      alert('Category is required.');
+      alert('La catégorie est obligatoire.');
       return;
     }
     try {
@@ -437,3 +441,5 @@
 </script>
 </body>
 </html>
+
+
