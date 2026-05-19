@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Thread — Forum</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="../index.html">FORUM</a>
+  <div class="nav-links">
+    <a href="../index.html">← Back</a>
+  </div>
+</nav>
+
+<div class="container" style="max-width:680px;">
+  <div style="padding-top:2rem;">
+    <div class="page-header">
+      <h2>Start a new thread</h2>
+      <p>Share something with the community</p>
+    </div>
+
+    <div class="card">
+      <div id="alert"></div>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="title" placeholder="What's your thread about?" />
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="category">
+          <option value="">Select a category…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Content</label>
+        <textarea id="content" placeholder="Write your post…" style="min-height:200px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Tags <span style="font-weight:300; text-transform:none; letter-spacing:0;">(optional — hold Ctrl to select multiple)</span></label>
+        <select id="tags" multiple style="min-height:90px;"></select>
+      </div>
+      <div style="display:flex; gap:0.75rem; justify-content:flex-end;">
+        <a href="../index.html" class="btn btn-ghost">Cancel</a>
+        <button class="btn btn-primary" onclick="submit()">Post Thread</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  if (!auth.isLoggedIn()) window.location.href = 'login.html';
+
+  async function loadOptions() {
+    try {
+      const [cats, tags] = await Promise.all([api.get('/categories'), api.get('/tags')]);
+      const catEl = document.getElementById('category');
+      cats.categories.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.name;
+        catEl.appendChild(o);
+      });
+      const tagEl = document.getElementById('tags');
+      tags.tags.forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.id; o.textContent = t.name;
+        tagEl.appendChild(o);
+      });
+    } catch {}
+  }
+
+  async function submit() {
+    const title = document.getElementById('title').value.trim();
+    const content = document.getElementById('content').value.trim();
+    const category_id = document.getElementById('category').value;
+    const tags = Array.from(document.getElementById('tags').selectedOptions).map(o => Number(o.value));
+    const alertEl = document.getElementById('alert');
+    alertEl.innerHTML = '';
+
+    if (!title || !content || !category_id) {
+      alertEl.innerHTML = '<div class="alert alert-error">Please fill in title, content, and category.</div>';
+      return;
+    }
+    try {
+      const data = await api.post('/threads', { title, content, category_id: Number(category_id), tags }, true);
+      window.location.href = `thread.html?slug=${data.slug}`;
+    } catch (e) {
+      alertEl.innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+    }
+  }
+
+  loadOptions();
+</script>
+</body>
+</html>
