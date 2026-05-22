@@ -38,7 +38,9 @@ const getThreads = async (req, res) => {
       ? '(t.is_deleted = FALSE OR t.author_id = ? OR ? = \'admin\')'
       : 't.is_deleted = FALSE';
     let query = `
-      SELECT t.*, u.username AS author_name, c.name AS category_name,
+      SELECT t.*, u.username AS author_name,
+        COALESCE(NULLIF(u.avatar_url, ''), 'https://cdn-icons-png.flaticon.com/512/11789/11789135.png') AS author_avatar_url,
+        c.name AS category_name,
         CASE
           WHEN t.is_deleted = TRUE THEN 'archived'
           WHEN t.is_locked = TRUE THEN 'closed'
@@ -91,7 +93,9 @@ const getThread = async (req, res) => {
       ? '(t.is_deleted = FALSE OR t.author_id = ? OR ? = \'admin\')'
       : 't.is_deleted = FALSE';
     const [rows] = await db.query(`
-      SELECT t.*, u.username AS author_name, c.name AS category_name,
+      SELECT t.*, u.username AS author_name,
+        COALESCE(NULLIF(u.avatar_url, ''), 'https://cdn-icons-png.flaticon.com/512/11789/11789135.png') AS author_avatar_url,
+        c.name AS category_name,
         CASE
           WHEN t.is_deleted = TRUE THEN 'archived'
           WHEN t.is_locked = TRUE THEN 'closed'

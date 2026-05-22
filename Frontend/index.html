@@ -61,6 +61,7 @@
 
 <script src="js/api.js"></script>
 <script>
+  const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/11789/11789135.png';
   let currentPage = 1;
   let activeCategory = '';
   let activeTag = '';
@@ -109,7 +110,10 @@
             <div class="thread-title"><a href="pages/thread.html?slug=${t.slug}">${t.title}</a></div>
             ${t.image_url ? `<div style="margin:0.6rem 0 0.4rem;"><img src="${t.image_url}" alt="Image du sujet" style="max-width:220px; width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
             <div class="thread-meta">
-              <span>par <strong>${t.author_name}</strong></span>
+              <span style="display:inline-flex; align-items:center; gap:0.35rem;">
+                <img src="${t.author_avatar_url || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${t.author_name}" style="width:22px; height:22px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" />
+                <span>par <strong>${t.author_name}</strong></span>
+              </span>
               <span class="category-pill">${t.category_name}</span>
               <span>${new Date(t.created_at).toLocaleDateString()}${editedLabel(t.created_at, t.updated_at)}</span>
               <span>Commentaires: ${t.comment_count}</span>

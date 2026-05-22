@@ -15,7 +15,16 @@ const api = {
       headers,
       body: body ? JSON.stringify(body) : null,
     });
-    const data = await res.json();
+    let data = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+    if (auth && res.status === 401) {
+      authStore.clearCurrentAccount();
+      throw new Error('Session expirée ou invalide. Reconnectez-vous.');
+    }
     if (!res.ok) throw new Error(data.error || 'Request failed');
     return data;
   },
@@ -91,6 +100,14 @@ const authStore = {
   getToken() {
     return this.getCurrentAccount()?.token || null;
   },
+  clearCurrentAccount() {
+    const current = this.getCurrentAccount();
+    if (!current) return;
+    const accounts = this.getAccounts().filter((a) => a.id !== current.id);
+    this.saveAccounts(accounts);
+    if (!accounts.length) this.setCurrentAccountId(null);
+    else this.setCurrentAccountId(accounts[0].id);
+  },
 };
 
 const auth = {
@@ -158,6 +175,7 @@ const auth = {
           ${switchable.length ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:0.35rem;">Changer de compte</div>` : ''}
           ${switchable.map((a) => `<button type="button" data-switch-account="${a.id}" style="display:block; width:100%; text-align:left; background:none; color:var(--text-dim); border:1px solid var(--line); border-radius:8px; padding:0.35rem 0.5rem; margin-bottom:0.35rem; cursor:pointer;">${a.user.username} (${a.user.role})</button>`).join('')}
           <div style="display:flex; gap:0.45rem; margin-top:0.4rem;">
+            <a href="${basePath}pages/settings.html" style="font-size:0.8rem;">Profil / Parametres</a>
             <a href="${loginHref}" style="font-size:0.8rem;">Ajouter un compte</a>
             <button type="button" data-logout-current style="margin-left:auto; background:none; border:none; color:var(--accent2); cursor:pointer; font-size:0.8rem;">Deconnexion du compte</button>
           </div>

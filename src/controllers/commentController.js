@@ -33,6 +33,7 @@ const getComments = async (req, res) => {
 
     const [comments] = await db.query(`
       SELECT c.*, u.username AS author_name,
+        COALESCE(NULLIF(u.avatar_url, ''), 'https://cdn-icons-png.flaticon.com/512/11789/11789135.png') AS author_avatar_url,
         COALESCE(SUM(v.value), 0) AS vote_score
       FROM comments c
       JOIN users u ON c.author_id = u.id

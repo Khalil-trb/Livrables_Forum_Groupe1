@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profil et Parametres - Forum</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
+  <div class="nav-links" id="nav-links">
+    <a href="../index.html">&larr; Sujets</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<div class="wide-container">
+  <div class="hero">
+    <h1>Mon <span>Profil</span></h1>
+    <p>Gerez vos informations personnelles et suivez votre activite.</p>
+  </div>
+
+  <div id="alert"></div>
+
+  <div class="layout">
+    <div class="card">
+      <h3 style="margin-bottom:1rem;">Informations du profil</h3>
+      <div id="profile-overview"><div class="loading">Chargement du profil...</div></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-bottom:1rem;">Modifier le profil</h3>
+      <form id="profile-form">
+        <label for="username">Nom d'utilisateur</label>
+        <input id="username" type="text" maxlength="50" required />
+
+        <label for="avatar_url">Photo de profil (URL)</label>
+        <input id="avatar_url" type="url" placeholder="https://..." />
+
+        <label for="bio">Biographie</label>
+        <textarea id="bio" rows="6" maxlength="500" placeholder="Parlez de vous..."></textarea>
+
+        <button class="btn btn-primary" type="submit">Enregistrer</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  function setAlert(message, isError = false) {
+    document.getElementById('alert').innerHTML = message
+      ? `<div class="alert ${isError ? 'alert-error' : 'alert-success'}">${message}</div>`
+      : '';
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Jamais';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return 'Inconnue';
+    return d.toLocaleString();
+  }
+
+  function renderNav() {
+    const user = auth.getUser();
+    if (!user) {
+      window.location.href = 'login.html';
+      return;
+    }
+    document.getElementById('nav-auth').innerHTML =
+      `${user.role === 'admin' ? '<a href="admin-dashboard.html">Tableau admin</a>' : ''} <span id="account-menu-slot"></span>`;
+    auth.renderAccountMenu('account-menu-slot', { basePath: '../' });
+  }
+
+  function renderProfile(profile) {
+    const avatar = profile.avatar_url
+      ? `<img src="${profile.avatar_url}" alt="Avatar" style="width:72px; height:72px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" />`
+      : `<div style="width:72px; height:72px; border-radius:999px; display:grid; place-items:center; border:1px solid var(--line); color:var(--text-muted);">N/A</div>`;
+
+    document.getElementById('profile-overview').innerHTML = `
+      <div style="display:flex; gap:0.9rem; align-items:center; margin-bottom:1rem;">
+        ${avatar}
+        <div>
+          <div class="thread-title">${profile.username}</div>
+          <div class="thread-meta">${profile.email}</div>
+        </div>
+      </div>
+      <div class="thread-meta" style="display:grid; gap:0.35rem;">
+        <span><strong>Nom d'utilisateur:</strong> ${profile.username}</span>
+        <span><strong>Biographie:</strong> ${profile.bio || 'Aucune biographie'}</span>
+        <span><strong>Derniere connexion:</strong> ${formatDate(profile.last_login_at)}</span>
+        <span><strong>Nombre de messages envoyes:</strong> ${profile.stats.messages_sent}</span>
+        <span><strong>Nombre de topics crees:</strong> ${profile.stats.topics_created}</span>
+      </div>
+    `;
+
+    document.getElementById('username').value = profile.username || '';
+    document.getElementById('avatar_url').value = profile.avatar_url || '';
+    document.getElementById('bio').value = profile.bio || '';
+  }
+
+  async function loadProfile() {
+    const data = await api.get('/profile/me', true);
+    renderProfile(data.profile);
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    try {
+      const payload = {
+        username: document.getElementById('username').value,
+        avatar_url: document.getElementById('avatar_url').value,
+        bio: document.getElementById('bio').value
+      };
+      const data = await api.put('/profile/me', payload, true);
+
+      const current = authStore.getCurrentAccount();
+      if (current) {
+        auth.login(current.token, data.user);
+      }
+
+      setAlert('Profil mis a jour avec succes.');
+      await loadProfile();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function init() {
+    renderNav();
+    document.getElementById('profile-form').addEventListener('submit', onSubmit);
+    try {
+      await loadProfile();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  init();
+</script>
+</body>
+</html>

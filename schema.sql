@@ -12,6 +12,7 @@ CREATE TABLE users (
   role ENUM('user', 'moderator', 'admin') DEFAULT 'user',
   avatar_url VARCHAR(255),
   bio TEXT,
+  last_login_at TIMESTAMP NULL DEFAULT NULL,
   is_banned BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

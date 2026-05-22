@@ -7,11 +7,14 @@ const comments = require('../controllers/commentController');
 const votes = require('../controllers/voteController');
 const cats = require('../controllers/categoryController');
 const mod = require('../controllers/moderationController');
+const profile = require('../controllers/profileController');
 
 // --- AUTH ---
 router.post('/auth/register', auth.register);
 router.post('/auth/login', auth.login);
 router.get('/auth/me', authenticate, auth.getMe);
+router.get('/profile/me', authenticate, profile.getMyProfile);
+router.put('/profile/me', authenticate, profile.updateMyProfile);
 
 // --- THREADS ---
 router.get('/threads', optionalAuthenticate, threads.getThreads);
