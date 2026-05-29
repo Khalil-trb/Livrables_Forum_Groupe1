@@ -4,14 +4,14 @@ const db = require('../config/db');
 const resolveUserFromToken = async (token) => {
   const decoded = jwt.verify(token, process.env.JWT_SECRET);
   const [rows] = await db.query('SELECT id, username, email, role, is_banned FROM users WHERE id = ?', [decoded.id]);
-  if (!rows.length) return { error: 'User not found' };
-  if (rows[0].is_banned) return { error: 'Account is banned', status: 403 };
+  if (!rows.length) return { error: 'Utilisateur introuvable' };
+  if (rows[0].is_banned) return { error: 'Ce compte est banni', status: 403 };
   return { user: rows[0] };
 };
 
 const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'No token provided' });
+  if (!token) return res.status(401).json({ error: 'Connexion requise' });
 
   try {
     const resolved = await resolveUserFromToken(token);
@@ -19,7 +19,7 @@ const authenticate = async (req, res, next) => {
     req.user = resolved.user;
     next();
   } catch {
-    return res.status(401).json({ error: 'Invalid token' });
+    return res.status(401).json({ error: 'Session invalide' });
   }
 };
 
@@ -37,7 +37,7 @@ const optionalAuthenticate = async (req, _res, next) => {
 
 const authorize = (...roles) => (req, res, next) => {
   if (!roles.includes(req.user.role))
-    return res.status(403).json({ error: 'Insufficient permissions' });
+    return res.status(403).json({ error: 'Permissions insuffisantes' });
   next();
 };
 

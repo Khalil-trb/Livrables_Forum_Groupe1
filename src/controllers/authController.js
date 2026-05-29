@@ -7,7 +7,7 @@ const getJwtConfig = () => {
   const secret = process.env.JWT_SECRET;
   const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
   if (!secret) {
-    throw new Error('Server misconfiguration: JWT_SECRET is missing');
+    throw new Error('Configuration serveur invalide : JWT_SECRET est manquant');
   }
   return { secret, expiresIn };
 };
@@ -38,24 +38,24 @@ const register = async (req, res) => {
   const hasSpecial = /[^A-Za-z0-9]/.test(password || '');
 
   if (!cleanUsername || !cleanEmail || !password) {
-    return res.status(400).json({ error: 'Username, email and password are required' });
+    return res.status(400).json({ error: 'Nom d utilisateur, email et mot de passe requis' });
   }
   if (!userRegex.test(cleanUsername)) {
-    return res.status(400).json({ error: 'Username must contain only letters and numbers' });
+    return res.status(400).json({ error: 'Le nom d utilisateur doit contenir seulement des lettres et des chiffres' });
   }
   if (!emailRegex.test(cleanEmail)) {
-    return res.status(400).json({ error: 'Invalid email format' });
+    return res.status(400).json({ error: 'Format d email invalide' });
   }
   if (!hasMinLen || !hasUpper || !hasSpecial) {
     return res.status(400).json({
-      error: 'Password must be at least 8 characters and include one uppercase letter and one special character'
+      error: 'Le mot de passe doit contenir au moins 8 caracteres, une majuscule et un caractere special'
     });
   }
   if (cleanBio.length > 500) {
-    return res.status(400).json({ error: 'Bio must be 500 characters max' });
+    return res.status(400).json({ error: 'La biographie doit faire 500 caracteres maximum' });
   }
   if (avatar_url && !parsedAvatar) {
-    return res.status(400).json({ error: 'Invalid avatar URL. Use a valid http(s) URL' });
+    return res.status(400).json({ error: 'URL d avatar invalide. Utilisez une URL http(s) valide' });
   }
 
   try {
@@ -63,7 +63,7 @@ const register = async (req, res) => {
     const [existing] = await db.query(
       'SELECT id FROM users WHERE email = ? OR username = ?', [cleanEmail, cleanUsername]
     );
-    if (existing.length) return res.status(409).json({ error: 'Username or email already taken' });
+    if (existing.length) return res.status(409).json({ error: 'Nom d utilisateur ou email deja utilise' });
 
     const hash = await bcrypt.hash(password, 12);
     const [result] = await db.query(
@@ -73,10 +73,10 @@ const register = async (req, res) => {
     const token = jwt.sign({ id: result.insertId }, jwtConfig.secret, { expiresIn: jwtConfig.expiresIn });
     res.status(201).json({ token, user: { id: result.insertId, username: cleanUsername, email: cleanEmail, role: 'user' } });
   } catch (err) {
-    if (err.message.includes('JWT_SECRET is missing')) {
+    if (err.message.includes('JWT_SECRET')) {
       return res.status(500).json({ error: err.message });
     }
-    res.status(500).json({ error: 'Registration failed', details: err.message });
+    res.status(500).json({ error: 'Inscription impossible', details: err.message });
   }
 };
 
@@ -86,19 +86,19 @@ const login = async (req, res) => {
   try {
     const jwtConfig = getJwtConfig();
     if (!cleanIdentifier || !password) {
-      return res.status(400).json({ error: 'Identifier and password are required' });
+      return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
     }
     const [rows] = await db.query(
       'SELECT * FROM users WHERE email = ? OR username = ?',
       [cleanIdentifier.toLowerCase(), cleanIdentifier]
     );
-    if (!rows.length) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!rows.length) return res.status(401).json({ error: 'Identifiants invalides' });
 
     const user = rows[0];
-    if (user.is_banned) return res.status(403).json({ error: 'Account is banned' });
+    if (user.is_banned) return res.status(403).json({ error: 'Ce compte est banni' });
 
     const valid = await bcrypt.compare(password, user.password_hash);
-    if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!valid) return res.status(401).json({ error: 'Identifiants invalides' });
 
     try {
       await db.query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
@@ -111,10 +111,10 @@ const login = async (req, res) => {
     const token = jwt.sign({ id: user.id }, jwtConfig.secret, { expiresIn: jwtConfig.expiresIn });
     res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
   } catch (err) {
-    if (err.message.includes('JWT_SECRET is missing')) {
+    if (err.message.includes('JWT_SECRET')) {
       return res.status(500).json({ error: err.message });
     }
-    res.status(500).json({ error: 'Login failed', details: err.message });
+    res.status(500).json({ error: 'Connexion impossible', details: err.message });
   }
 };
 

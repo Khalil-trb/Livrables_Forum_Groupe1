@@ -25,7 +25,7 @@ const api = {
       authStore.clearCurrentAccount();
       throw new Error('Session expirée ou invalide. Reconnectez-vous.');
     }
-    if (!res.ok) throw new Error(data.error || 'Request failed');
+    if (!res.ok) throw new Error(data.error || 'Requete impossible');
     return data;
   },
   get: (endpoint, auth = false) => api.request('GET', endpoint, null, auth),
@@ -166,18 +166,18 @@ const auth = {
     const switchable = accounts.filter((a) => String(a.id) !== String(user.id));
     container.innerHTML = `
       <details style="position:relative;">
-        <summary style="list-style:none; cursor:pointer; color:var(--text-dim); font-size:0.85rem;">
-          ${user.username} v
+        <summary class="account-summary">
+          ${user.username} ▾
         </summary>
-        <div style="position:absolute; right:0; top:1.8rem; min-width:240px; background:#fff; border:1px solid var(--line); border-radius:10px; padding:0.6rem; z-index:999;">
-          <div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:0.4rem;">Compte actuel</div>
-          <div style="font-size:0.84rem; margin-bottom:0.6rem;">${user.username} v
-          ${switchable.length ? `<div style="font-size:0.76rem; color:var(--text-muted); margin-bottom:0.35rem;">Changer de compte</div>` : ''}
-          ${switchable.map((a) => `<button type="button" data-switch-account="${a.id}" style="display:block; width:100%; text-align:left; background:none; color:var(--text-dim); border:1px solid var(--line); border-radius:8px; padding:0.35rem 0.5rem; margin-bottom:0.35rem; cursor:pointer;">${a.user.username} (${a.user.role})</button>`).join('')}
-          <div style="display:flex; gap:0.45rem; margin-top:0.4rem;">
-            <a href="${basePath}pages/settings.html" style="font-size:0.8rem;">Profil / Parametres</a>
-            <a href="${loginHref}" style="font-size:0.8rem;">Ajouter un compte</a>
-            <button type="button" data-logout-current style="margin-left:auto; background:none; border:none; color:var(--accent2); cursor:pointer; font-size:0.8rem;">Deconnexion du compte</button>
+        <div class="account-menu">
+          <div class="account-menu-label">Compte actuel</div>
+          <div class="account-menu-current">${user.username}</div>
+          ${switchable.length ? `<div class="account-menu-label">Changer de compte</div>` : ''}
+          ${switchable.map((a) => `<button type="button" data-switch-account="${a.id}" class="account-switch-btn">${a.user.username} (${a.user.role})</button>`).join('')}
+          <div class="account-menu-actions">
+            <a href="${basePath}pages/settings.html">Profil / Parametres</a>
+            <a href="${loginHref}">Ajouter un compte</a>
+            <button type="button" data-logout-current>Deconnexion</button>
           </div>
         </div>
       </details>

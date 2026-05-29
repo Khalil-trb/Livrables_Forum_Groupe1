@@ -82,7 +82,7 @@ const getThreads = async (req, res) => {
     const [threads] = await db.query(query, params);
     res.json({ threads, page: pageNum, limit: isAll ? 'all' : limitNum });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch threads', details: err.message });
+    res.status(500).json({ error: 'Impossible de charger les sujets', details: err.message });
   }
 };
 
@@ -121,7 +121,7 @@ const getThread = async (req, res) => {
 
     res.json({ thread: { ...rows[0], tags } });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch thread', details: err.message });
+    res.status(500).json({ error: 'Impossible de charger le sujet', details: err.message });
   }
 };
 
@@ -134,16 +134,16 @@ const createThread = async (req, res) => {
   const cleanContent = (content || '').trim();
 
   if (!cleanTitle || !category_id) {
-    return res.status(400).json({ error: 'Title and category are required' });
+    return res.status(400).json({ error: 'Titre et categorie requis' });
   }
   if (!cleanContent && !normalizedImageUrl) {
-    return res.status(400).json({ error: 'Add text content or an image URL' });
+    return res.status(400).json({ error: 'Ajoutez du texte ou une URL d image' });
   }
   if (image_url && !normalizedImageUrl) {
-    return res.status(400).json({ error: 'Invalid image URL. Use a valid http(s) URL' });
+    return res.status(400).json({ error: 'URL d image invalide. Utilisez une URL http(s) valide' });
   }
   if (!normalizedState) {
-    return res.status(400).json({ error: 'Invalid state. Use open, closed or archived' });
+    return res.status(400).json({ error: 'Etat invalide. Utilisez ouvert, ferme ou archive' });
   }
 
   const isLocked = normalizedState === 'closed';
@@ -175,9 +175,9 @@ const createThread = async (req, res) => {
         await db.query('INSERT IGNORE INTO thread_tags (thread_id, tag_id) VALUES (?, ?)', [result.insertId, tagId]);
       }
     }
-    res.status(201).json({ message: 'Thread created', threadId: result.insertId, slug });
+    res.status(201).json({ message: 'Sujet cree', threadId: result.insertId, slug });
   } catch (err) {
-    res.status(500).json({ error: 'Failed to create thread', details: err.message });
+    res.status(500).json({ error: 'Impossible de creer le sujet', details: err.message });
   }
 };
 
@@ -186,7 +186,7 @@ const updateThread = async (req, res) => {
   const { title, content, category_id, tags, state, image_url } = req.body;
   try {
     const [rows] = await db.query('SELECT * FROM threads WHERE id = ?', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'Thread not found' });
+    if (!rows.length) return res.status(404).json({ error: 'Sujet introuvable' });
     const thread = rows[0];
     if (thread.author_id !== req.user.id)
       return res.status(403).json({ error: 'Not allowed' });

@@ -1,11 +1,26 @@
 const db = require('../config/db');
 
+let banHiddenColumnsReady = false;
+
+const ensureBanHiddenColumns = async () => {
+  if (banHiddenColumnsReady) return;
+  for (const table of ['threads', 'comments']) {
+    try {
+      await db.query(`ALTER TABLE ${table} ADD COLUMN is_hidden_by_ban BOOLEAN DEFAULT FALSE`);
+    } catch (err) {
+      if (err.code !== 'ER_DUP_FIELDNAME') throw err;
+    }
+  }
+  banHiddenColumnsReady = true;
+};
+
 // Ban / Unban a user (admin only)
 const banUser = async (req, res) => {
   const { ban } = req.body; // true or false
   const shouldBan = Boolean(ban);
   const connection = await db.getConnection();
   try {
+    await ensureBanHiddenColumns();
     await connection.beginTransaction();
 
     const [rows] = await connection.query('SELECT id, role FROM users WHERE id = ?', [req.params.id]);
@@ -20,14 +35,29 @@ const banUser = async (req, res) => {
 
     await connection.query('UPDATE users SET is_banned = ? WHERE id = ?', [shouldBan, req.params.id]);
     if (shouldBan) {
-      await connection.query('UPDATE threads SET is_deleted = TRUE WHERE author_id = ?', [req.params.id]);
-      await connection.query('UPDATE comments SET is_deleted = TRUE WHERE author_id = ?', [req.params.id]);
+      await connection.query(
+        'UPDATE threads SET is_deleted = TRUE, is_hidden_by_ban = TRUE WHERE author_id = ? AND is_deleted = FALSE',
+        [req.params.id]
+      );
+      await connection.query(
+        'UPDATE comments SET is_deleted = TRUE, is_hidden_by_ban = TRUE WHERE author_id = ? AND is_deleted = FALSE',
+        [req.params.id]
+      );
+    } else {
+      await connection.query(
+        'UPDATE threads SET is_deleted = FALSE, is_hidden_by_ban = FALSE WHERE author_id = ? AND is_hidden_by_ban = TRUE',
+        [req.params.id]
+      );
+      await connection.query(
+        'UPDATE comments SET is_deleted = FALSE, is_hidden_by_ban = FALSE WHERE author_id = ? AND is_hidden_by_ban = TRUE',
+        [req.params.id]
+      );
     }
 
     await connection.commit();
     res.json({
       message: shouldBan
-        ? 'User banned and content archived'
+        ? 'User banned and content hidden'
         : 'User unbanned'
     });
   } catch (err) {
