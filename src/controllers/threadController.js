@@ -188,7 +188,7 @@ const updateThread = async (req, res) => {
     const [rows] = await db.query('SELECT * FROM threads WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ error: 'Thread not found' });
     const thread = rows[0];
-    if (thread.author_id !== req.user.id && !['admin', 'moderator'].includes(req.user.role))
+    if (thread.author_id !== req.user.id)
       return res.status(403).json({ error: 'Not allowed' });
 
     const normalizedState = state ? normalizeState(state) : null;

@@ -68,7 +68,7 @@
           <a href="${profileHref(friend.id)}">${avatar(friend, 42)}</a>
           <div style="min-width:0;">
             <div class="thread-title" style="margin-bottom:0;">
-              <a href="${profileHref(friend.id)}">${escapeHtml(friend.username)}</a>
+              <a class="user-link" href="${profileHref(friend.id)}">${escapeHtml(friend.username)}</a>
             </div>
             <div class="thread-meta">
               <span>${escapeHtml(friend.role || 'user')}</span>
@@ -87,20 +87,24 @@
     if (!auth.isLoggedIn()) {
       return '<a class="btn btn-primary" href="login.html">Connexion pour ajouter</a>';
     }
+    const reportButton = auth.getUser()?.role !== 'admin'
+      ? `<button class="btn btn-ghost" type="button" onclick="reportUser(${data.profile.id})">Signaler</button>`
+      : '';
     const relation = data.friendship;
     if (!relation) {
-      return `<button class="btn btn-primary" type="button" onclick="sendFriendRequest(${data.profile.id})">Ajouter en ami</button>`;
+      return `<button class="btn btn-primary" type="button" onclick="sendFriendRequest(${data.profile.id})">Ajouter en ami</button>${reportButton}`;
     }
     if (relation.status === 'accepted') {
-      return `<button class="btn btn-danger" type="button" onclick="removeFriend(${data.profile.id})">Retirer des amis</button>`;
+      return `<button class="btn btn-danger" type="button" onclick="removeFriend(${data.profile.id})">Retirer des amis</button>${reportButton}`;
     }
     if (relation.direction === 'incoming') {
       return `
         <button class="btn btn-primary" type="button" onclick="respondFriendRequest(${relation.id}, 'accept')">Accepter</button>
         <button class="btn btn-ghost" type="button" onclick="respondFriendRequest(${relation.id}, 'decline')">Refuser</button>
+        ${reportButton}
       `;
     }
-    return `<button class="btn btn-ghost" type="button" onclick="cancelFriendRequest(${relation.id})">Annuler la demande</button>`;
+    return `<button class="btn btn-ghost" type="button" onclick="cancelFriendRequest(${relation.id})">Annuler la demande</button>${reportButton}`;
   }
 
   function renderProfile(data) {
@@ -195,6 +199,17 @@
       await api.delete(`/friends/${userId}`, true);
       setAlert('Ami retire.');
       await loadProfile();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function reportUser(userId) {
+    const reason = prompt('Pourquoi voulez-vous signaler cet utilisateur ?');
+    if (!reason || !reason.trim()) return;
+    try {
+      await api.post('/reports', { target_type: 'user', target_id: userId, reason }, true);
+      setAlert('Signalement envoye. Merci.');
     } catch (err) {
       setAlert(err.message, true);
     }

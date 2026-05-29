@@ -3,15 +3,38 @@ const db = require('../config/db');
 // Ban / Unban a user (admin only)
 const banUser = async (req, res) => {
   const { ban } = req.body; // true or false
+  const shouldBan = Boolean(ban);
+  const connection = await db.getConnection();
   try {
-    const [rows] = await db.query('SELECT id, role FROM users WHERE id = ?', [req.params.id]);
-    if (!rows.length) return res.status(404).json({ error: 'User not found' });
-    if (rows[0].role === 'admin') return res.status(403).json({ error: 'Cannot ban an admin' });
+    await connection.beginTransaction();
 
-    await db.query('UPDATE users SET is_banned = ? WHERE id = ?', [ban, req.params.id]);
-    res.json({ message: ban ? 'User banned' : 'User unbanned' });
+    const [rows] = await connection.query('SELECT id, role FROM users WHERE id = ?', [req.params.id]);
+    if (!rows.length) {
+      await connection.rollback();
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (rows[0].role === 'admin') {
+      await connection.rollback();
+      return res.status(403).json({ error: 'Cannot ban an admin' });
+    }
+
+    await connection.query('UPDATE users SET is_banned = ? WHERE id = ?', [shouldBan, req.params.id]);
+    if (shouldBan) {
+      await connection.query('UPDATE threads SET is_deleted = TRUE WHERE author_id = ?', [req.params.id]);
+      await connection.query('UPDATE comments SET is_deleted = TRUE WHERE author_id = ?', [req.params.id]);
+    }
+
+    await connection.commit();
+    res.json({
+      message: shouldBan
+        ? 'User banned and content archived'
+        : 'User unbanned'
+    });
   } catch (err) {
+    await connection.rollback();
     res.status(500).json({ error: 'Failed to update ban status', details: err.message });
+  } finally {
+    connection.release();
   }
 };
 

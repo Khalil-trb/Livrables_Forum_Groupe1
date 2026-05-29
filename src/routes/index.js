@@ -9,6 +9,7 @@ const cats = require('../controllers/categoryController');
 const mod = require('../controllers/moderationController');
 const profile = require('../controllers/profileController');
 const friends = require('../controllers/friendController');
+const reports = require('../controllers/reportController');
 
 // --- AUTH ---
 router.post('/auth/register', auth.register);
@@ -39,6 +40,11 @@ router.get('/threads/:threadId/comments', optionalAuthenticate, comments.getComm
 router.post('/threads/:threadId/comments', authenticate, comments.createComment);
 router.put('/comments/:id', authenticate, comments.updateComment);
 router.delete('/comments/:id', authenticate, comments.deleteComment);
+
+// --- REPORTS ---
+router.post('/reports', authenticate, reports.createReport);
+router.get('/admin/reports', authenticate, authorize('admin'), reports.getReports);
+router.patch('/admin/reports/:id', authenticate, authorize('admin'), reports.updateReportStatus);
 
 // --- VOTES ---
 router.post('/vote', authenticate, votes.vote);

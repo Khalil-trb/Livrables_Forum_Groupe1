@@ -25,6 +25,7 @@
 
   <div class="admin-filter-panel" aria-label="Filtrer le tableau d'administration">
     <button type="button" class="admin-filter-btn active" data-admin-filter="users">Utilisateurs</button>
+    <button type="button" class="admin-filter-btn" data-admin-filter="reports">Signalements</button>
     <button type="button" class="admin-filter-btn" data-admin-filter="comments">Commentaires</button>
     <button type="button" class="admin-filter-btn" data-admin-filter="topics">Posts</button>
   </div>
@@ -37,6 +38,19 @@
   <div class="card admin-section" data-admin-section="comments" style="margin-bottom:1rem;">
     <h3 style="margin-bottom:0.8rem;">Messages</h3>
     <div id="comments-list"><div class="loading">Chargement des messages...</div></div>
+  </div>
+
+  <div class="card admin-section" data-admin-section="reports" style="margin-bottom:1rem;">
+    <div style="display:flex; justify-content:space-between; gap:1rem; align-items:center; flex-wrap:wrap; margin-bottom:0.8rem;">
+      <h3>Signalements</h3>
+      <select id="report-status-filter" onchange="loadReports()" style="width:auto;">
+        <option value="open">Ouverts</option>
+        <option value="reviewed">Traites</option>
+        <option value="dismissed">Rejetes</option>
+        <option value="all">Tous</option>
+      </select>
+    </div>
+    <div id="reports-list"><div class="loading">Chargement des signalements...</div></div>
   </div>
 
   <div class="card admin-section" data-admin-section="users">
@@ -77,6 +91,20 @@
     if (thread.is_deleted) return 'archived';
     if (thread.is_locked) return 'closed';
     return 'open';
+  }
+
+  function reportTypeLabel(type) {
+    if (type === 'thread') return 'Sujet';
+    if (type === 'comment') return 'Commentaire';
+    if (type === 'user') return 'Utilisateur';
+    return type;
+  }
+
+  function reportTargetLabel(report) {
+    if (report.target_type === 'thread') return report.target_thread_title || `Sujet #${report.target_id}`;
+    if (report.target_type === 'comment') return (report.target_comment_content || `Commentaire #${report.target_id}`).slice(0, 120);
+    if (report.target_type === 'user') return report.target_user_name || `Utilisateur #${report.target_id}`;
+    return `#${report.target_id}`;
   }
 
   function setAlert(message, isError = false) {
@@ -123,12 +151,6 @@
           </div>
         </div>
         <div style="display:flex; gap:0.4rem; align-items:center;">
-          <select id="state-${t.id}" style="width:auto;">
-            <option value="open" ${threadState(t) === 'open' ? 'selected' : ''}>ouvert</option>
-            <option value="closed" ${threadState(t) === 'closed' ? 'selected' : ''}>fermé</option>
-            <option value="archived" ${threadState(t) === 'archived' ? 'selected' : ''}>archivé</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="changeThreadState(${t.id})">Mettre à jour</button>
           <button class="btn btn-danger btn-sm" onclick="deleteTopic(${t.id})">Supprimer</button>
         </div>
       </div>
@@ -167,7 +189,7 @@
     list.innerHTML = data.users.map(u => `
       <div class="thread-item" style="margin-bottom:0.6rem;">
         <div>
-          <div class="thread-title"><a href="${profileHref(u.id)}">${escapeHtml(u.username)}</a></div>
+          <div class="thread-title"><a class="user-link" href="${profileHref(u.id)}">${escapeHtml(u.username)}</a></div>
           <div class="thread-meta">
             <span>#${u.id}</span>
             <span>${escapeHtml(u.email)}</span>
@@ -183,15 +205,49 @@
     `).join('');
   }
 
-  async function changeThreadState(threadId) {
-    const state = document.getElementById(`state-${threadId}`).value;
-    try {
-      await api.put(`/threads/${threadId}`, { state }, true);
-      setAlert('État du sujet mis à jour.');
-      await loadTopics();
-    } catch (e) {
-      setAlert(e.message, true);
+  async function loadReports() {
+    const status = document.getElementById('report-status-filter')?.value || 'open';
+    const data = await api.get(`/admin/reports?status=${encodeURIComponent(status)}`, true);
+    const list = document.getElementById('reports-list');
+    if (!data.reports.length) {
+      list.innerHTML = '<div class="empty">Aucun signalement trouve.</div>';
+      return;
     }
+    list.innerHTML = data.reports.map(r => `
+      <div class="thread-item" style="margin-bottom:0.6rem;">
+        <div>
+          <div class="thread-title">${reportTypeLabel(r.target_type)} : ${escapeHtml(reportTargetLabel(r))}</div>
+          <div style="font-size:0.9rem; color:var(--text-dim); margin:0.35rem 0;">${escapeHtml(r.reason)}</div>
+          <div class="thread-meta">
+            <span>#${r.id}</span>
+            <span>par <strong>${escapeHtml(r.reporter_name)}</strong></span>
+            <span>statut : ${escapeHtml(r.status)}</span>
+            <span>${new Date(r.created_at).toLocaleString()}</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+          ${r.status === 'open'
+            ? `<button class="btn btn-primary btn-sm" onclick="updateReport(${r.id}, 'reviewed')">Marquer traite</button>
+               <button class="btn btn-ghost btn-sm" onclick="updateReport(${r.id}, 'dismissed')">Rejeter</button>
+               ${reportTargetAction(r)}`
+            : `<span class="tag">${escapeHtml(r.status)}</span>`
+          }
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function reportTargetAction(report) {
+    if (report.target_type === 'thread') {
+      return `<button class="btn btn-danger btn-sm" onclick="deleteReportedTarget(${report.id}, 'thread', ${report.target_id})">Supprimer le sujet</button>`;
+    }
+    if (report.target_type === 'comment') {
+      return `<button class="btn btn-danger btn-sm" onclick="deleteReportedTarget(${report.id}, 'comment', ${report.target_id})">Supprimer le message</button>`;
+    }
+    if (report.target_type === 'user') {
+      return `<button class="btn btn-danger btn-sm" onclick="banReportedUser(${report.id}, ${report.target_id})">Bannir</button>`;
+    }
+    return '';
   }
 
   async function deleteTopic(threadId) {
@@ -199,7 +255,7 @@
     try {
       await api.delete(`/threads/${threadId}`, true);
       setAlert('Sujet supprimé.');
-      await loadTopics();
+      await Promise.all([loadTopics(), loadReports()]);
     } catch (e) {
       setAlert(e.message, true);
     }
@@ -210,7 +266,7 @@
     try {
       await api.delete(`/comments/${commentId}`, true);
       setAlert('Message supprimé.');
-      await loadComments();
+      await Promise.all([loadComments(), loadReports()]);
     } catch (e) {
       setAlert(e.message, true);
     }
@@ -227,12 +283,48 @@
     }
   }
 
+  async function updateReport(reportId, status) {
+    try {
+      await api.patch(`/admin/reports/${reportId}`, { status }, true);
+      setAlert(status === 'reviewed' ? 'Signalement marque comme traite.' : 'Signalement rejete.');
+      await loadReports();
+    } catch (e) {
+      setAlert(e.message, true);
+    }
+  }
+
+  async function deleteReportedTarget(reportId, targetType, targetId) {
+    const label = targetType === 'thread' ? 'ce sujet' : 'ce message';
+    if (!confirm(`Supprimer ${label} et marquer le signalement comme traite ?`)) return;
+    try {
+      const endpoint = targetType === 'thread' ? `/threads/${targetId}` : `/comments/${targetId}`;
+      await api.delete(endpoint, true);
+      await api.patch(`/admin/reports/${reportId}`, { status: 'reviewed' }, true);
+      setAlert(targetType === 'thread' ? 'Sujet supprime.' : 'Message supprime.');
+      await Promise.all([loadTopics(), loadComments(), loadReports()]);
+    } catch (e) {
+      setAlert(e.message, true);
+    }
+  }
+
+  async function banReportedUser(reportId, userId) {
+    if (!confirm('Bannir cet utilisateur et marquer le signalement comme traite ?')) return;
+    try {
+      await api.patch(`/admin/users/${userId}/ban`, { ban: true }, true);
+      await api.patch(`/admin/reports/${reportId}`, { status: 'reviewed' }, true);
+      setAlert('Utilisateur banni.');
+      await Promise.all([loadUsers(), loadTopics(), loadComments(), loadReports()]);
+    } catch (e) {
+      setAlert(e.message, true);
+    }
+  }
+
   async function init() {
     if (!ensureAdmin()) return;
     renderNav();
     setupAdminFilters();
     try {
-      await Promise.all([loadTopics(), loadComments(), loadUsers()]);
+      await Promise.all([loadTopics(), loadComments(), loadUsers(), loadReports()]);
     } catch (e) {
       setAlert(e.message, true);
     }

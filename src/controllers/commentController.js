@@ -82,9 +82,10 @@ const getComments = async (req, res) => {
 const createComment = async (req, res) => {
   const { content, parent_id, image_url } = req.body;
   const normalizedImageUrl = normalizeMediaUrl(image_url);
+  const cleanContent = content === undefined || content === null ? '' : String(content).trim();
   try {
-    if (!content || !String(content).trim()) {
-      return res.status(400).json({ error: 'Content is required' });
+    if (!cleanContent && !normalizedImageUrl) {
+      return res.status(400).json({ error: 'Add text content or an image URL' });
     }
     if (image_url && !normalizedImageUrl) {
       return res.status(400).json({ error: 'Invalid image URL. Use a valid http(s) URL' });
@@ -104,7 +105,7 @@ const createComment = async (req, res) => {
 
     const [result] = await db.query(
       'INSERT INTO comments (content, image_url, author_id, thread_id, parent_id) VALUES (?, ?, ?, ?, ?)',
-      [content, normalizedImageUrl, req.user.id, req.params.threadId, parent_id || null]
+      [cleanContent, normalizedImageUrl, req.user.id, req.params.threadId, parent_id || null]
     );
     res.status(201).json({ message: 'Comment created', commentId: result.insertId });
   } catch (err) {
@@ -127,8 +128,12 @@ const updateComment = async (req, res) => {
     if (image_url !== undefined && image_url !== null && String(image_url).trim() !== '' && !normalizedImageUrl) {
       return res.status(400).json({ error: 'Invalid image URL. Use a valid http(s) URL' });
     }
+    const nextContent = content === undefined ? rows[0].content : String(content).trim();
+    if (!nextContent && !normalizedImageUrl) {
+      return res.status(400).json({ error: 'Add text content or an image URL' });
+    }
 
-    await db.query('UPDATE comments SET content = ?, image_url = ? WHERE id = ?', [content, normalizedImageUrl, req.params.id]);
+    await db.query('UPDATE comments SET content = ?, image_url = ? WHERE id = ?', [nextContent, normalizedImageUrl, req.params.id]);
     res.json({ message: 'Comment updated' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update comment', details: err.message });

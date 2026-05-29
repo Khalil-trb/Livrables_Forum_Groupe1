@@ -116,7 +116,7 @@
         <div style="display:flex; gap:0.75rem; align-items:center; min-width:0;">
           <a href="${profileHref(user.id)}">${userAvatar(user)}</a>
           <div style="min-width:0;">
-            <div class="thread-title" style="margin-bottom:0;"><a href="${profileHref(user.id)}">${escapeHtml(user.username)}</a></div>
+            <div class="thread-title" style="margin-bottom:0;"><a class="user-link" href="${profileHref(user.id)}">${escapeHtml(user.username)}</a></div>
             <div class="thread-meta">
               <span>${escapeHtml(user.role || 'user')}</span>
               ${user.bio ? `<span>${escapeHtml(user.bio).slice(0, 90)}</span>` : ''}

@@ -23,6 +23,7 @@
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
       <h3 style="font-family:var(--font-display); font-size:1.3rem;">Réponses</h3>
       <div style="display:flex; gap:0.5rem; align-items:center;">
+        <button class="btn btn-primary btn-sm" type="button" onclick="scrollToReplyForm()">Publier une réponse</button>
         <select id="comment-sort" onchange="changeCommentSort(this.value)" style="width:auto; min-width:170px;">
           <option value="newest">Les plus récentes</option>
           <option value="chronological">Chronologique</option>
@@ -39,6 +40,7 @@
     </div>
     <div id="comment-list"></div>
     <div id="comment-count-info" style="margin-top:0.6rem; font-size:0.82rem; color:var(--text-muted);"></div>
+    <div id="comment-pagination" style="display:flex; justify-content:center; margin-top:1rem;"></div>
     <hr />
     <div id="reply-form"></div>
   </div>
@@ -54,6 +56,7 @@
   let editingCommentId = null;
   let commentSort = 'newest';
   let commentBatchSize = '10';
+  let visibleCommentCount = 10;
   let editCategories = [];
   let editTags = [];
   const editedLabel = (createdAt, updatedAt) =>
@@ -71,13 +74,22 @@
     }
   }
 
-  function canManageThread(thread, user) {
-    return !!user && (user.id === thread.author_id || ['admin', 'moderator'].includes(user.role));
+  function canEditThread(thread, user) {
+    return !!user && Number(user.id) === Number(thread.author_id);
+  }
+
+  function canDeleteThread(thread, user) {
+    return !!user && (Number(user.id) === Number(thread.author_id) || ['admin', 'moderator'].includes(user.role));
   }
 
   function canReplyOnLocked(thread, user) {
     if (!thread.is_locked) return true;
     return !!user && (user.id === thread.author_id || user.role === 'admin');
+  }
+
+  function canReportTarget(authorId) {
+    const user = auth.getUser();
+    return !!user && user.role !== 'admin' && Number(user.id) !== Number(authorId);
   }
 
   async function loadThread() {
@@ -93,7 +105,7 @@
       threadId = t.id;
       currentThread = t;
       document.title = `${t.title} - Forum`;
-      const showInlineEdit = isEditingThread && canManageThread(t, user);
+      const showInlineEdit = isEditingThread && canEditThread(t, user);
 
       document.getElementById('thread-content').innerHTML = `
         <div style="margin-bottom:2rem;">
@@ -110,7 +122,7 @@
             <div class="thread-meta">
               <span style="display:inline-flex; align-items:center; gap:0.35rem;">
                 <a href="${profileHref(t.author_id)}"><img src="${t.author_avatar_url || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${t.author_name}" style="width:24px; height:24px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" /></a>
-                <span>par <strong><a href="${profileHref(t.author_id)}">${t.author_name}</a></strong> <span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span></span>
+                <span>par <a class="user-link" href="${profileHref(t.author_id)}">${t.author_name}</a> <span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span></span>
               </span>
               <span class="category-pill">${t.category_name}</span>
               <span>${new Date(t.created_at).toLocaleDateString()}${editedLabel(t.created_at, t.updated_at)}</span>
@@ -145,7 +157,7 @@
             `
             : `
               <div style="font-size:0.95rem; line-height:1.8; color:var(--text-dim); white-space:pre-wrap; margin-bottom:1rem;">${t.content}</div>
-              ${t.image_url ? `<div style="margin-bottom:1.5rem;"><img src="${escapeHtml(t.image_url)}" alt="Image du sujet" style="max-width:100%; border-radius:12px; border:1px solid var(--line);" /></div>` : ''}
+              ${t.image_url ? `<div style="margin-bottom:1.5rem;"><img class="post-media" src="${escapeHtml(t.image_url)}" alt="Image du sujet" /></div>` : ''}
             `
           }
           <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; justify-content:space-between;">
@@ -157,14 +169,16 @@
               </div>
               <div>${t.tags?.map(tg => `<span class="tag">${tg.name}</span>`).join(' ') || ''}</div>
             </div>
-            ${canManageThread(t, user) ? `
+            ${canEditThread(t, user) || canDeleteThread(t, user) ? `
               <div style="display:flex; gap:0.5rem;">
-                ${showInlineEdit
+                ${canEditThread(t, user) ? (showInlineEdit
                   ? '<button class="btn btn-ghost btn-sm" onclick="cancelEditThread()">Annuler</button><button class="btn btn-primary btn-sm" onclick="saveThreadEdit()">Enregistrer</button>'
                   : '<button class="btn btn-ghost btn-sm" onclick="startEditThread()">Modifier le sujet</button>'
-                }
-                <button class="btn btn-danger btn-sm" onclick="deleteThread()">Supprimer le sujet</button>
+                ) : ''}
+                ${canDeleteThread(t, user) ? '<button class="btn btn-danger btn-sm" onclick="deleteThread()">Supprimer le sujet</button>' : ''}
               </div>
+            ` : canReportTarget(t.author_id) ? `
+              <button class="btn btn-ghost btn-sm" type="button" onclick="reportContent('thread', ${t.id})">Signaler</button>
             ` : ''}
           </div>
         </div>
@@ -175,6 +189,7 @@
       if (sortSelect) sortSelect.value = commentSort;
       const batchSelect = document.getElementById('comment-batch-size');
       if (batchSelect) batchSelect.value = commentBatchSize;
+      visibleCommentCount = getInitialVisibleCommentCount();
       renderReplyForm();
       loadComments();
     } catch (e) {
@@ -186,11 +201,17 @@
     try {
       const data = await api.get(`/threads/${threadId}/comments?sort=${encodeURIComponent(commentSort)}`, auth.isLoggedIn());
       const el = document.getElementById('comment-list');
+      const paginationEl = document.getElementById('comment-pagination');
       const limitedComments = commentBatchSize === 'all'
         ? data.comments
-        : data.comments.slice(0, Number(commentBatchSize));
+        : data.comments.slice(0, visibleCommentCount);
       const infoEl = document.getElementById('comment-count-info');
       if (infoEl) infoEl.textContent = `${limitedComments.length} message(s) affiché(s) sur ${data.comments.length}`;
+      if (paginationEl) {
+        paginationEl.innerHTML = commentBatchSize !== 'all' && limitedComments.length < data.comments.length
+          ? `<button class="btn btn-ghost btn-sm" type="button" onclick="loadMoreComments()">Afficher les ${getCommentBatchAmount()} suivants</button>`
+          : '';
+      }
       if (!limitedComments.length) {
         el.innerHTML = '<div class="empty" style="padding:1.5rem 0;">Aucune réponse pour le moment. Soyez le premier !</div>';
         return;
@@ -203,11 +224,26 @@
 
   function changeCommentSort(value) {
     commentSort = value;
+    visibleCommentCount = getInitialVisibleCommentCount();
     loadComments();
   }
 
   function changeCommentBatchSize(value) {
     commentBatchSize = value;
+    visibleCommentCount = getInitialVisibleCommentCount();
+    loadComments();
+  }
+
+  function getCommentBatchAmount() {
+    return Number(commentBatchSize) || 10;
+  }
+
+  function getInitialVisibleCommentCount() {
+    return commentBatchSize === 'all' ? Number.MAX_SAFE_INTEGER : getCommentBatchAmount();
+  }
+
+  function loadMoreComments() {
+    visibleCommentCount += getCommentBatchAmount();
     loadComments();
   }
 
@@ -220,7 +256,7 @@
             <span style="display:inline-flex; align-items:center; gap:0.35rem;">
               <a href="${profileHref(c.author_id)}"><img src="${c.author_avatar_url || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${c.author_name}" style="width:24px; height:24px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" /></a>
               <span>
-                <a href="${profileHref(c.author_id)}">${c.author_name}</a>
+                <a class="user-link" href="${profileHref(c.author_id)}">${c.author_name}</a>
                 ${currentThread && Number(c.author_id) === Number(currentThread.author_id)
                   ? '<span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span>'
                   : ''}
@@ -237,7 +273,7 @@
             `
             : `
               <div>${c.content}</div>
-              ${c.image_url ? `<div style="margin-top:0.6rem;"><img src="${escapeHtml(c.image_url)}" alt="Image du commentaire" style="max-width:100%; border-radius:10px; border:1px solid var(--line);" /></div>` : ''}
+              ${c.image_url ? `<div style="margin-top:0.6rem;"><img class="comment-media" src="${escapeHtml(c.image_url)}" alt="Image du commentaire" /></div>` : ''}
             `
           }
         </div>
@@ -252,8 +288,10 @@
             ? `<button class="comment-reply-btn" onclick="startEditComment(${c.id})">Modifier</button>` : ''}
           ${user && user.id === c.author_id && editingCommentId === c.id
             ? `<button class="comment-reply-btn" onclick="saveCommentEdit(${c.id})">Enregistrer</button> <button class="comment-reply-btn" onclick="cancelEditComment()">Annuler</button>` : ''}
-          ${user && (user.id === c.author_id || canManageThread(currentThread, user))
+          ${user && (user.id === c.author_id || canDeleteThread(currentThread, user))
             ? `<button class="comment-reply-btn" style="color:var(--accent2)" onclick="deleteComment(${c.id})">Supprimer</button>` : ''}
+          ${canReportTarget(c.author_id)
+            ? `<button class="comment-reply-btn" onclick="reportContent('comment', ${c.id})">Signaler</button>` : ''}
         </div>
         ${c.replies?.length ? `<div class="replies">${c.replies.map(r => renderComment(r, depth + 1)).join('')}</div>` : ''}
       </div>
@@ -293,13 +331,20 @@
     document.getElementById('reply-content')?.focus();
   }
 
+  function scrollToReplyForm() {
+    const replyForm = document.getElementById('reply-form');
+    replyForm?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(() => document.getElementById('reply-content')?.focus(), 350);
+  }
+
   async function submitReply(parentId) {
     const content = document.getElementById('reply-content').value.trim();
     const image_url = document.getElementById('reply-image-url').value.trim();
-    if (!content) return;
+    if (!content && !image_url) return;
     try {
       await api.post(`/threads/${threadId}/comments`, { content, image_url, parent_id: parentId || null }, true);
       renderReplyForm(null);
+      visibleCommentCount = getInitialVisibleCommentCount();
       loadComments();
     } catch (e) {
       alert(e.message);
@@ -319,8 +364,8 @@
   async function saveCommentEdit(id) {
     const content = document.getElementById(`edit-comment-${id}`)?.value.trim();
     const image_url = document.getElementById(`edit-comment-image-${id}`)?.value.trim();
-    if (!content) {
-      alert('Le commentaire ne peut pas être vide.');
+    if (!content && !image_url) {
+      alert('Ajoutez un texte ou une URL d image.');
       return;
     }
     try {
@@ -441,6 +486,21 @@
       } else {
         await loadComments();
       }
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function reportContent(targetType, targetId) {
+    if (!auth.isLoggedIn()) {
+      window.location.href = 'login.html';
+      return;
+    }
+    const reason = prompt('Pourquoi voulez-vous signaler cet element ?');
+    if (!reason || !reason.trim()) return;
+    try {
+      await api.post('/reports', { target_type: targetType, target_id: targetId, reason }, true);
+      alert('Signalement envoye. Merci.');
     } catch (e) {
       alert(e.message);
     }
