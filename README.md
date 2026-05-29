@@ -35,14 +35,23 @@ npm start        # production
 
 Comment avez-vous décomposé le projet ? Quelles ont été les phases ?
 
+Pour l'organisation du projet, on a commencé avec la création des bases du projet. C'est à dire crée un backend + frontend connecté. Ensuite, on a suivi le diaporama donnée avec les fonctionnalitées demandées en passant une par une. Et finalement, on a fait des tests sur le site et on a rajouté des éléments non demandés.
+
 Qui s’est occupé de quoi ? Avez-vous utiliser une stratégie particulière pour répartir les tâches?
+
+On a commencé sur la base de Dylan = Frontend et Khalil = Backend mais après la création des bases ont a juste répartit par création de fonctionnalités en travaillant sur des branches différentes dans GitHub.
 
 Comment avez-vous géré votre temps ? 
 
+On n'a pas trouver de nécessités de nous concentrer sur la gestion du temps car en utilisant une base de projet faites auparavant, on n'a pas été en manque de temps pour ce projet.
+
 Avez-vous défini des priorités ?
+
+Seulement de finir les fonctionnalités obligatoires avant de faire les bonus mais sinon pas de priorités particulières.
 
 Avez-vous défini une stratégie pour vous documenter 
 
+Seulement de remplir ce que l'on a fait pendant le projet mais du au fait que l'on a suivi un ordre prédéfini par le document fourni, cela n'a pas été difficile.
 
 ---
 
