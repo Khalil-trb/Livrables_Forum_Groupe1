@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Profil - Forum</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<nav>
+  <a class="nav-brand" href="../index.html"><img src="../img/Logo-Vareza.png" alt="Vareza Forum" /> Vareza Forum</a>
+  <div class="nav-links" id="nav-links">
+    <a href="../index.html">&larr; Sujets</a>
+    <span id="nav-auth"></span>
+  </div>
+</nav>
+
+<div class="wide-container">
+  <div id="alert"></div>
+  <div id="profile-content"><div class="loading">Chargement du profil...</div></div>
+</div>
+
+<script src="../js/api.js"></script>
+<script>
+  const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/11789/11789135.png';
+  const profileId = Number(new URLSearchParams(location.search).get('id'));
+  let currentProfile = null;
+
+  function escapeHtml(text) {
+    return String(text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function setAlert(message, isError = false) {
+    document.getElementById('alert').innerHTML = message
+      ? `<div class="alert ${isError ? 'alert-error' : 'alert-success'}">${escapeHtml(message)}</div>`
+      : '';
+  }
+
+  function renderNav() {
+    const user = auth.getUser();
+    const navAuth = document.getElementById('nav-auth');
+    if (user) {
+      navAuth.innerHTML = `${user.role === 'admin' ? '<a href="admin-dashboard.html">Tableau admin</a>' : ''} <span id="account-menu-slot"></span>`;
+      auth.renderAccountMenu('account-menu-slot', { basePath: '../' });
+    } else {
+      auth.renderAccountMenu('nav-auth', { basePath: '../' });
+    }
+  }
+
+  function avatar(user, size = 72) {
+    const src = user.avatar_url || DEFAULT_AVATAR;
+    return `<img src="${escapeHtml(src)}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${escapeHtml(user.username)}" style="width:${size}px; height:${size}px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" />`;
+  }
+
+  function profileHref(userId) {
+    return `profile.html?id=${encodeURIComponent(userId)}`;
+  }
+
+  function friendRow(friend) {
+    return `
+      <div class="thread-item friend-item">
+        <div style="display:flex; gap:0.75rem; align-items:center; min-width:0;">
+          <a href="${profileHref(friend.id)}">${avatar(friend, 42)}</a>
+          <div style="min-width:0;">
+            <div class="thread-title" style="margin-bottom:0;">
+              <a href="${profileHref(friend.id)}">${escapeHtml(friend.username)}</a>
+            </div>
+            <div class="thread-meta">
+              <span>${escapeHtml(friend.role || 'user')}</span>
+              ${friend.bio ? `<span>${escapeHtml(friend.bio).slice(0, 90)}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function relationshipAction(data) {
+    if (data.is_self) {
+      return '<a class="btn btn-primary" href="settings.html">Modifier mon profil</a>';
+    }
+    if (!auth.isLoggedIn()) {
+      return '<a class="btn btn-primary" href="login.html">Connexion pour ajouter</a>';
+    }
+    const relation = data.friendship;
+    if (!relation) {
+      return `<button class="btn btn-primary" type="button" onclick="sendFriendRequest(${data.profile.id})">Ajouter en ami</button>`;
+    }
+    if (relation.status === 'accepted') {
+      return `<button class="btn btn-danger" type="button" onclick="removeFriend(${data.profile.id})">Retirer des amis</button>`;
+    }
+    if (relation.direction === 'incoming') {
+      return `
+        <button class="btn btn-primary" type="button" onclick="respondFriendRequest(${relation.id}, 'accept')">Accepter</button>
+        <button class="btn btn-ghost" type="button" onclick="respondFriendRequest(${relation.id}, 'decline')">Refuser</button>
+      `;
+    }
+    return `<button class="btn btn-ghost" type="button" onclick="cancelFriendRequest(${relation.id})">Annuler la demande</button>`;
+  }
+
+  function renderProfile(data) {
+    currentProfile = data;
+    const profile = data.profile;
+    document.title = `${profile.username} - Forum`;
+    document.getElementById('profile-content').innerHTML = `
+      <div class="hero">
+        <h1>${escapeHtml(profile.username)}</h1>
+        <p>${escapeHtml(profile.bio || 'Aucune biographie')}</p>
+      </div>
+
+      <div class="layout">
+        <div class="card">
+          <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem; flex-wrap:wrap;">
+            ${avatar(profile)}
+            <div>
+              <div class="thread-title">${escapeHtml(profile.username)}</div>
+              <div class="thread-meta">
+                <span>${escapeHtml(profile.role)}</span>
+                <span>Membre depuis ${new Date(profile.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+          <div class="thread-meta" style="display:grid; gap:0.35rem;">
+            <span><strong>Topics crees:</strong> ${profile.stats.topics_created}</span>
+            <span><strong>Messages envoyes:</strong> ${profile.stats.messages_sent}</span>
+            <span><strong>Amis:</strong> ${profile.stats.friends}</span>
+          </div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:1.2rem;">
+            ${relationshipAction(data)}
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:0.8rem;">Amis</h3>
+          ${data.friends.length
+            ? data.friends.map(friendRow).join('')
+            : '<div class="empty" style="padding:1rem;">Aucun ami pour le moment.</div>'
+          }
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadProfile() {
+    if (!profileId) {
+      document.getElementById('profile-content').innerHTML = '<div class="alert alert-error">Profil introuvable.</div>';
+      return;
+    }
+    try {
+      const data = await api.get(`/users/${profileId}/profile`, auth.isLoggedIn());
+      renderProfile(data);
+    } catch (err) {
+      document.getElementById('profile-content').innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function sendFriendRequest(userId) {
+    try {
+      await api.post('/friends/requests', { user_id: userId }, true);
+      setAlert('Demande d ami envoyee.');
+      await loadProfile();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function respondFriendRequest(requestId, action) {
+    try {
+      await api.patch(`/friends/requests/${requestId}`, { action }, true);
+      setAlert(action === 'accept' ? 'Demande acceptee.' : 'Demande refusee.');
+      await loadProfile();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function cancelFriendRequest(requestId) {
+    try {
+      await api.delete(`/friends/requests/${requestId}`, true);
+      setAlert('Demande annulee.');
+      await loadProfile();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function removeFriend(userId) {
+    if (!confirm('Retirer cet utilisateur de votre liste d amis ?')) return;
+    try {
+      await api.delete(`/friends/${userId}`, true);
+      setAlert('Ami retire.');
+      await loadProfile();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  renderNav();
+  loadProfile();
+</script>
+</body>
+</html>

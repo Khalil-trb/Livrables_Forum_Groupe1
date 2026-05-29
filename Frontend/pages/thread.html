@@ -58,6 +58,7 @@
   let editTags = [];
   const editedLabel = (createdAt, updatedAt) =>
     new Date(updatedAt).getTime() > new Date(createdAt).getTime() ? ' (modifié)' : '';
+  const profileHref = (userId) => `profile.html?id=${encodeURIComponent(userId)}`;
 
   function renderNav() {
     const user = auth.getUser();
@@ -108,8 +109,8 @@
           <div style="display:flex; gap:1.25rem; align-items:center; flex-wrap:wrap; margin-bottom:1.5rem;">
             <div class="thread-meta">
               <span style="display:inline-flex; align-items:center; gap:0.35rem;">
-                <img src="${t.author_avatar_url || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${t.author_name}" style="width:24px; height:24px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" />
-                <span>par <strong>${t.author_name}</strong> <span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span></span>
+                <a href="${profileHref(t.author_id)}"><img src="${t.author_avatar_url || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${t.author_name}" style="width:24px; height:24px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" /></a>
+                <span>par <strong><a href="${profileHref(t.author_id)}">${t.author_name}</a></strong> <span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span></span>
               </span>
               <span class="category-pill">${t.category_name}</span>
               <span>${new Date(t.created_at).toLocaleDateString()}${editedLabel(t.created_at, t.updated_at)}</span>
@@ -217,9 +218,9 @@
         <div class="comment-header">
           <span class="comment-author">
             <span style="display:inline-flex; align-items:center; gap:0.35rem;">
-              <img src="${c.author_avatar_url || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${c.author_name}" style="width:24px; height:24px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" />
+              <a href="${profileHref(c.author_id)}"><img src="${c.author_avatar_url || DEFAULT_AVATAR}" onerror="this.onerror=null;this.src='${DEFAULT_AVATAR}'" alt="Avatar de ${c.author_name}" style="width:24px; height:24px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" /></a>
               <span>
-                ${c.author_name}
+                <a href="${profileHref(c.author_id)}">${c.author_name}</a>
                 ${currentThread && Number(c.author_id) === Number(currentThread.author_id)
                   ? '<span style="display:inline-block; margin-left:0.35rem; padding:0.08rem 0.42rem; border-radius:999px; font-size:0.68rem; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; color:#101014; background:var(--accent);">OP</span>'
                   : ''}

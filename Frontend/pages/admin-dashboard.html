@@ -23,17 +23,23 @@
 
   <div id="alert"></div>
 
-  <div class="card" style="margin-bottom:1rem;">
+  <div class="admin-filter-panel" aria-label="Filtrer le tableau d'administration">
+    <button type="button" class="admin-filter-btn active" data-admin-filter="users">Utilisateurs</button>
+    <button type="button" class="admin-filter-btn" data-admin-filter="comments">Commentaires</button>
+    <button type="button" class="admin-filter-btn" data-admin-filter="topics">Posts</button>
+  </div>
+
+  <div class="card admin-section" data-admin-section="topics" style="margin-bottom:1rem;">
     <h3 style="margin-bottom:0.8rem;">Sujets</h3>
     <div id="topics-list"><div class="loading">Chargement des sujets...</div></div>
   </div>
 
-  <div class="card" style="margin-bottom:1rem;">
+  <div class="card admin-section" data-admin-section="comments" style="margin-bottom:1rem;">
     <h3 style="margin-bottom:0.8rem;">Messages</h3>
     <div id="comments-list"><div class="loading">Chargement des messages...</div></div>
   </div>
 
-  <div class="card">
+  <div class="card admin-section" data-admin-section="users">
     <h3 style="margin-bottom:0.8rem;">Utilisateurs</h3>
     <div id="users-list"><div class="loading">Chargement des utilisateurs...</div></div>
   </div>
@@ -63,6 +69,10 @@
       .replace(/'/g, '&#39;');
   }
 
+  function profileHref(userId) {
+    return `profile.html?id=${encodeURIComponent(userId)}`;
+  }
+
   function threadState(thread) {
     if (thread.is_deleted) return 'archived';
     if (thread.is_locked) return 'closed';
@@ -73,6 +83,26 @@
     document.getElementById('alert').innerHTML = message
       ? `<div class="alert ${isError ? 'alert-error' : 'alert-success'}">${escapeHtml(message)}</div>`
       : '';
+  }
+
+  function setActiveAdminSection(section) {
+    document.querySelectorAll('[data-admin-section]').forEach((panel) => {
+      panel.hidden = panel.getAttribute('data-admin-section') !== section;
+    });
+    document.querySelectorAll('[data-admin-filter]').forEach((button) => {
+      const isActive = button.getAttribute('data-admin-filter') === section;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-pressed', String(isActive));
+    });
+  }
+
+  function setupAdminFilters() {
+    document.querySelectorAll('[data-admin-filter]').forEach((button) => {
+      button.addEventListener('click', () => {
+        setActiveAdminSection(button.getAttribute('data-admin-filter'));
+      });
+    });
+    setActiveAdminSection('users');
   }
 
   async function loadTopics() {
@@ -137,7 +167,7 @@
     list.innerHTML = data.users.map(u => `
       <div class="thread-item" style="margin-bottom:0.6rem;">
         <div>
-          <div class="thread-title">${escapeHtml(u.username)}</div>
+          <div class="thread-title"><a href="${profileHref(u.id)}">${escapeHtml(u.username)}</a></div>
           <div class="thread-meta">
             <span>#${u.id}</span>
             <span>${escapeHtml(u.email)}</span>
@@ -200,6 +230,7 @@
   async function init() {
     if (!ensureAdmin()) return;
     renderNav();
+    setupAdminFilters();
     try {
       await Promise.all([loadTopics(), loadComments(), loadUsers()]);
     } catch (e) {

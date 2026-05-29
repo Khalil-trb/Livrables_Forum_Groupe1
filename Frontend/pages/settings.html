@@ -45,6 +45,36 @@
       </form>
     </div>
   </div>
+
+  <div class="card" style="margin-top:1.5rem;">
+    <div style="display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; flex-wrap:wrap; margin-bottom:1rem;">
+      <div>
+        <h3>Amis</h3>
+        <div class="thread-meta">Recherchez des membres, gerez les demandes et votre liste d'amis.</div>
+      </div>
+      <div style="display:flex; gap:0.5rem; min-width:min(100%, 360px);">
+        <input id="friend-search-input" type="text" placeholder="Rechercher un utilisateur..." minlength="2" />
+        <button class="btn btn-primary btn-sm" type="button" id="friend-search-btn">Rechercher</button>
+      </div>
+    </div>
+
+    <div id="friend-search-results" style="margin-bottom:1.25rem;"></div>
+
+    <div class="friend-sections">
+      <section>
+        <h4>Demandes recues</h4>
+        <div id="incoming-requests"><div class="loading" style="padding:1rem;">Chargement...</div></div>
+      </section>
+      <section>
+        <h4>Demandes envoyees</h4>
+        <div id="outgoing-requests"><div class="loading" style="padding:1rem;">Chargement...</div></div>
+      </section>
+      <section>
+        <h4>Liste d'amis</h4>
+        <div id="friends-list"><div class="loading" style="padding:1rem;">Chargement...</div></div>
+      </section>
+    </div>
+  </div>
 </div>
 
 <script src="../js/api.js"></script>
@@ -60,6 +90,42 @@
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return 'Inconnue';
     return d.toLocaleString();
+  }
+
+  function escapeHtml(text) {
+    return String(text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function userAvatar(user) {
+    const src = user.avatar_url || 'https://cdn-icons-png.flaticon.com/512/11789/11789135.png';
+    return `<img src="${escapeHtml(src)}" alt="Avatar de ${escapeHtml(user.username)}" style="width:42px; height:42px; border-radius:999px; object-fit:cover; border:1px solid var(--line);" />`;
+  }
+
+  function profileHref(userId) {
+    return `profile.html?id=${encodeURIComponent(userId)}`;
+  }
+
+  function friendUserRow(user, actions = '') {
+    return `
+      <div class="thread-item friend-item">
+        <div style="display:flex; gap:0.75rem; align-items:center; min-width:0;">
+          <a href="${profileHref(user.id)}">${userAvatar(user)}</a>
+          <div style="min-width:0;">
+            <div class="thread-title" style="margin-bottom:0;"><a href="${profileHref(user.id)}">${escapeHtml(user.username)}</a></div>
+            <div class="thread-meta">
+              <span>${escapeHtml(user.role || 'user')}</span>
+              ${user.bio ? `<span>${escapeHtml(user.bio).slice(0, 90)}</span>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="friend-actions">${actions}</div>
+      </div>
+    `;
   }
 
   function renderNav() {
@@ -105,6 +171,139 @@
     renderProfile(data.profile);
   }
 
+  async function loadFriends() {
+    const [friendsData, requestsData] = await Promise.all([
+      api.get('/friends', true),
+      api.get('/friends/requests', true)
+    ]);
+
+    renderIncomingRequests(requestsData.incoming || []);
+    renderOutgoingRequests(requestsData.outgoing || []);
+    renderFriendsList(friendsData.friends || []);
+  }
+
+  function renderIncomingRequests(requests) {
+    const el = document.getElementById('incoming-requests');
+    if (!requests.length) {
+      el.innerHTML = '<div class="empty" style="padding:1rem;">Aucune demande recue.</div>';
+      return;
+    }
+    el.innerHTML = requests.map((request) => friendUserRow(request, `
+      <button class="btn btn-primary btn-sm" type="button" onclick="respondFriendRequest(${request.request_id}, 'accept')">Accepter</button>
+      <button class="btn btn-ghost btn-sm" type="button" onclick="respondFriendRequest(${request.request_id}, 'decline')">Refuser</button>
+    `)).join('');
+  }
+
+  function renderOutgoingRequests(requests) {
+    const el = document.getElementById('outgoing-requests');
+    if (!requests.length) {
+      el.innerHTML = '<div class="empty" style="padding:1rem;">Aucune demande envoyee.</div>';
+      return;
+    }
+    el.innerHTML = requests.map((request) => friendUserRow(request, `
+      <button class="btn btn-ghost btn-sm" type="button" onclick="cancelFriendRequest(${request.request_id})">Annuler</button>
+    `)).join('');
+  }
+
+  function renderFriendsList(friends) {
+    const el = document.getElementById('friends-list');
+    if (!friends.length) {
+      el.innerHTML = '<div class="empty" style="padding:1rem;">Votre liste d amis est vide.</div>';
+      return;
+    }
+    el.innerHTML = friends.map((friend) => friendUserRow(friend, `
+      <button class="btn btn-danger btn-sm" type="button" onclick="removeFriend(${friend.id})">Retirer</button>
+    `)).join('');
+  }
+
+  function renderSearchResults(users) {
+    const el = document.getElementById('friend-search-results');
+    if (!users.length) {
+      el.innerHTML = '<div class="empty" style="padding:1rem;">Aucun utilisateur trouve.</div>';
+      return;
+    }
+
+    el.innerHTML = users.map((user) => {
+      let actions = `<button class="btn btn-primary btn-sm" type="button" onclick="sendFriendRequest(${user.id})">Ajouter</button>`;
+      if (user.friendship?.status === 'accepted') {
+        actions = '<span class="tag">Deja ami</span>';
+      } else if (user.friendship?.status === 'pending' && user.friendship.direction === 'outgoing') {
+        actions = '<span class="tag">Demande envoyee</span>';
+      } else if (user.friendship?.status === 'pending' && user.friendship.direction === 'incoming') {
+        actions = `<button class="btn btn-primary btn-sm" type="button" onclick="respondFriendRequest(${user.friendship.id}, 'accept')">Accepter</button>`;
+      }
+      return friendUserRow(user, actions);
+    }).join('');
+  }
+
+  async function searchFriends() {
+    const input = document.getElementById('friend-search-input');
+    const search = input.value.trim();
+    if (search.length < 2) {
+      document.getElementById('friend-search-results').innerHTML = '<div class="alert alert-error">Entrez au moins 2 caracteres.</div>';
+      return;
+    }
+
+    const el = document.getElementById('friend-search-results');
+    el.innerHTML = '<div class="loading" style="padding:1rem;">Recherche...</div>';
+    try {
+      const data = await api.get(`/users/search?search=${encodeURIComponent(search)}`, true);
+      renderSearchResults(data.users || []);
+    } catch (err) {
+      el.innerHTML = `<div class="alert alert-error">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function refreshFriendsAndSearch() {
+    const search = document.getElementById('friend-search-input').value.trim();
+    if (search.length >= 2) {
+      await Promise.all([loadFriends(), searchFriends()]);
+      return;
+    }
+    await loadFriends();
+  }
+
+  async function sendFriendRequest(userId) {
+    try {
+      await api.post('/friends/requests', { user_id: userId }, true);
+      setAlert('Demande d ami envoyee.');
+      await refreshFriendsAndSearch();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function respondFriendRequest(requestId, action) {
+    try {
+      await api.patch(`/friends/requests/${requestId}`, { action }, true);
+      setAlert(action === 'accept' ? 'Demande acceptee.' : 'Demande refusee.');
+      await refreshFriendsAndSearch();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function cancelFriendRequest(requestId) {
+    try {
+      await api.delete(`/friends/requests/${requestId}`, true);
+      setAlert('Demande annulee.');
+      await refreshFriendsAndSearch();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
+  async function removeFriend(userId) {
+    if (!confirm('Retirer cet utilisateur de votre liste d amis ?')) return;
+    try {
+      await api.delete(`/friends/${userId}`, true);
+      setAlert('Ami retire.');
+      await refreshFriendsAndSearch();
+    } catch (err) {
+      setAlert(err.message, true);
+    }
+  }
+
   async function onSubmit(e) {
     e.preventDefault();
     try {
@@ -130,8 +329,12 @@
   async function init() {
     renderNav();
     document.getElementById('profile-form').addEventListener('submit', onSubmit);
+    document.getElementById('friend-search-btn').addEventListener('click', searchFriends);
+    document.getElementById('friend-search-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') searchFriends();
+    });
     try {
-      await loadProfile();
+      await Promise.all([loadProfile(), loadFriends()]);
     } catch (err) {
       setAlert(err.message, true);
     }

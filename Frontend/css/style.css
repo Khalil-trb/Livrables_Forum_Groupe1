@@ -176,6 +176,71 @@ select option { background: var(--bg2); }
 .alert-error { background: rgba(196,92,58,0.15); border: 1px solid rgba(196,92,58,0.4); color: #e88; }
 .alert-success { background: #eef6ff; border: 1px solid #c5dff6; color: var(--accent2); }
 
+/* ADMIN DASHBOARD */
+.admin-filter-panel {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin-bottom: 1rem;
+  padding: 0.35rem;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.admin-filter-btn {
+  min-width: 112px;
+  padding: 0.5rem 0.8rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text-dim);
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.admin-filter-btn:hover {
+  color: var(--text);
+  background: var(--bg3);
+}
+.admin-filter-btn.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.admin-section[hidden] {
+  display: none;
+}
+
+/* FRIENDS */
+.friend-sections {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.friend-sections h4 {
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+.friend-item {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  margin-bottom: 0.55rem;
+  padding: 0.8rem;
+  border-left-width: 1px;
+}
+.friend-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 /* DIVIDER */
 hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 
@@ -202,6 +267,11 @@ hr { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
   nav { padding: 0 1rem; }
   .nav-brand img { height: 28px; }
   .wide-container, .container { padding: 1.25rem 0.9rem; }
+  .admin-filter-panel { width: 100%; }
+  .admin-filter-btn { flex: 1; min-width: 0; padding-inline: 0.45rem; }
+  .friend-sections { grid-template-columns: 1fr; }
+  .friend-item { grid-template-columns: 1fr; }
+  .friend-actions { justify-content: flex-start; }
 }
 
 .account-menu-slot {
