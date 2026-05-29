@@ -165,7 +165,7 @@ const auth = {
 
     const switchable = accounts.filter((a) => String(a.id) !== String(user.id));
     container.innerHTML = `
-      <details style="position:relative;">
+    <details class="account-details">
         <summary class="account-summary">
           ${user.username} ▾
         </summary>
