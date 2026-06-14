@@ -1,132 +1,216 @@
-# Forum Backend API
+# Forum JS-D-K
 
-A RESTful API for an online forum built with **Node.js + Express + MySQL**.
+Application de forum en **Node.js**, **Express** et **MySQL**, avec une interface frontend statique servie directement par le serveur.
 
-## Features
-- 🔐 JWT Authentication (register / login)
-- 🧵 Threads with categories and tags
-- 💬 Nested comments / replies
-- 👍 Upvotes & downvotes on threads and comments
-- 🛡️ Role-based access: `user`, `moderator`, `admin`
-- 📌 Pin / Lock threads (moderator+)
-- 🚫 Ban users (admin)
+## Fonctionnalites
 
----
+- Authentification JWT : inscription, connexion et session utilisateur
+- Fils de discussion avec categories, tags et images
+- Commentaires imbriques avec reponses
+- Votes positifs et negatifs sur les discussions et commentaires
+- Profils publics et modification du profil personnel
+- Systeme d'amis : recherche, demandes, acceptation et suppression
+- Signalements de contenus
+- Moderation par roles : `user`, `moderator`, `admin`
+- Epingle / verrouillage des discussions pour la moderation
+- Bannissement et gestion des roles par les administrateurs
 
-## Setup
+## Technologies
+
+- **Backend** : Node.js, Express
+- **Base de donnees** : MySQL avec `mysql2`
+- **Authentification** : JWT, bcrypt
+- **Frontend** : HTML, CSS, JavaScript
+- **Developpement** : nodemon
+
+## Installation
+
+### 1. Installer les dependances
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Configure environment
-cp .env.example .env
-# Edit .env with your DB credentials and JWT secret
-
-# 3. Create the database
-mysql -u root -p < schema.sql
-
-# 4. Start the server
-npm run dev      # development (nodemon)
-npm start        # production
 ```
 
-## Déroulement du projet
+### 2. Configurer l'environnement
 
-Comment avez-vous décomposé le projet ? Quelles ont été les phases ?
+Copiez le fichier d'exemple, puis adaptez les valeurs a votre installation MySQL.
 
-Pour l'organisation du projet, on a commencé avec la création des bases du projet. C'est à dire crée un backend + frontend connecté. Ensuite, on a suivi le diaporama donnée avec les fonctionnalitées demandées en passant une par une. Et finalement, on a fait des tests sur le site et on a rajouté des éléments non demandés.
+```bash
+cp .env.example .env
+```
 
-Qui s’est occupé de quoi ? Avez-vous utiliser une stratégie particulière pour répartir les tâches?
+Variables principales :
 
-On a commencé sur la base de Dylan = Frontend et Khalil = Backend mais après la création des bases ont a juste répartit par création de fonctionnalités en travaillant sur des branches différentes dans GitHub.
+```env
+PORT=3000
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=forum_db
+JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+JWT_EXPIRES_IN=7d
+```
 
-Comment avez-vous géré votre temps ? 
+### 3. Creer la base de donnees
 
-On n'a pas trouver de nécessités de nous concentrer sur la gestion du temps car en utilisant une base de projet faites auparavant, on n'a pas été en manque de temps pour ce projet.
+```bash
+mysql -u root -p < schema.sql
+```
 
-Avez-vous défini des priorités ?
+Si votre base existe deja et que vous devez appliquer uniquement les ajouts recents, utilisez le fichier :
 
-Seulement de finir les fonctionnalités obligatoires avant de faire les bonus mais sinon pas de priorités particulières.
+```bash
+mysql -u root -p forum_db < migration.sql
+```
 
-Avez-vous défini une stratégie pour vous documenter 
+### 4. Lancer le serveur
 
-Seulement de remplir ce que l'on a fait pendant le projet mais du au fait que l'on a suivi un ordre prédéfini par le document fourni, cela n'a pas été difficile.
+```bash
+npm run dev
+```
 
----
+Pour un lancement sans nodemon :
 
-## API Reference
+```bash
+npm start
+```
 
-Base URL: `http://localhost:3000/api`
+L'application est ensuite disponible sur :
 
-### Auth
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/auth/register` | ❌ | Register a new user |
-| POST | `/auth/login` | ❌ | Login and get JWT token |
-| GET | `/auth/me` | ✅ | Get current user info |
+- Frontend : `http://localhost:3000`
+- API : `http://localhost:3000/api`
+- Health check : `http://localhost:3000/health`
 
-### Threads
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/threads` | ❌ | List threads (filter: `?category=&tag=&search=&page=&limit=`) |
-| GET | `/threads/:slug` | ❌ | Get a single thread |
-| POST | `/threads` | ✅ | Create a thread |
-| PUT | `/threads/:id` | ✅ | Update a thread (author or mod+) |
-| DELETE | `/threads/:id` | ✅ | Soft-delete a thread |
+## Scripts npm
 
-### Comments
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/threads/:threadId/comments` | ❌ | Get nested comments for a thread |
-| POST | `/threads/:threadId/comments` | ✅ | Post a comment (include `parent_id` for replies) |
-| PUT | `/comments/:id` | ✅ | Edit a comment |
-| DELETE | `/comments/:id` | ✅ | Soft-delete a comment |
+| Commande | Description |
+| --- | --- |
+| `npm run dev` | Lance le serveur avec nodemon |
+| `npm start` | Lance le serveur avec Node.js |
+| `npm test` | Affiche le message de test actuel |
+
+## Structure du projet
+
+```text
+.
+|-- Frontend/              # Interface HTML, CSS, JavaScript et images
+|-- src/
+|   |-- config/            # Configuration MySQL
+|   |-- controllers/       # Logique metier des routes API
+|   |-- middleware/        # Authentification et autorisations
+|   `-- routes/            # Definition des endpoints API
+|-- index.js               # Point d'entree Express
+|-- schema.sql             # Schema complet de la base
+|-- migration.sql          # Migration supplementaire
+`-- README.md
+```
+
+## Reference API
+
+URL de base : `http://localhost:3000/api`
+
+### Authentification
+
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/auth/register` | Non | Inscrire un utilisateur |
+| `POST` | `/auth/login` | Non | Connecter un utilisateur et recevoir un JWT |
+| `GET` | `/auth/me` | Oui | Recuperer l'utilisateur connecte |
+
+### Profil
+
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/profile/me` | Oui | Recuperer son profil |
+| `PUT` | `/profile/me` | Oui | Modifier son profil |
+| `GET` | `/users/:id/profile` | Optionnelle | Voir un profil public |
+
+### Amis
+
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/users/search` | Oui | Rechercher des utilisateurs |
+| `GET` | `/friends` | Oui | Lister ses amis |
+| `GET` | `/friends/requests` | Oui | Lister les demandes d'amis |
+| `POST` | `/friends/requests` | Oui | Envoyer une demande d'ami |
+| `PATCH` | `/friends/requests/:id` | Oui | Accepter ou refuser une demande |
+| `DELETE` | `/friends/requests/:id` | Oui | Annuler une demande envoyee |
+| `DELETE` | `/friends/:userId` | Oui | Supprimer un ami |
+
+### Discussions
+
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/threads` | Optionnelle | Lister les discussions avec filtres : `?category=&tag=&search=&page=&limit=` |
+| `GET` | `/threads/:slug` | Optionnelle | Recuperer une discussion |
+| `POST` | `/threads` | Oui | Creer une discussion |
+| `PUT` | `/threads/:id` | Oui | Modifier une discussion |
+| `DELETE` | `/threads/:id` | Oui | Supprimer une discussion |
+
+### Commentaires
+
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/threads/:threadId/comments` | Optionnelle | Lister les commentaires imbriques d'une discussion |
+| `POST` | `/threads/:threadId/comments` | Oui | Publier un commentaire ou une reponse avec `parent_id` |
+| `PUT` | `/comments/:id` | Oui | Modifier un commentaire |
+| `DELETE` | `/comments/:id` | Oui | Supprimer un commentaire |
 
 ### Votes
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/vote` | ✅ | Vote on a thread or comment (`target_type`, `target_id`, `value: 1 or -1`) |
 
-### Categories
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/categories` | ❌ | List all categories |
-| POST | `/categories` | admin | Create a category |
-| DELETE | `/categories/:id` | admin | Delete a category |
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/vote` | Oui | Voter sur une discussion ou un commentaire |
 
-### Tags
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/tags` | ❌ | List all tags |
-| POST | `/tags` | ✅ | Create a tag (authenticated user) |
+### Categories et tags
 
-### Moderation (admin/moderator)
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/admin/users` | admin | List all users |
-| PATCH | `/admin/users/:id/ban` | admin | Ban/unban user (`{ "ban": true/false }`) |
-| PATCH | `/admin/users/:id/role` | admin | Change user role (`{ "role": "moderator" }`) |
-| PATCH | `/admin/threads/:id/pin` | mod+ | Pin/unpin thread (`{ "pin": true/false }`) |
-| PATCH | `/admin/threads/:id/lock` | mod+ | Lock/unlock thread (`{ "lock": true/false }`) |
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/categories` | Non | Lister les categories |
+| `POST` | `/categories` | Admin | Creer une categorie |
+| `DELETE` | `/categories/:id` | Admin | Supprimer une categorie |
+| `GET` | `/tags` | Non | Lister les tags |
+| `POST` | `/tags` | Oui | Creer un tag |
 
----
+### Signalements
 
-## Authentication
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/reports` | Oui | Creer un signalement |
+| `GET` | `/admin/reports` | Admin | Lister les signalements |
+| `PATCH` | `/admin/reports/:id` | Admin | Mettre a jour le statut d'un signalement |
 
-All protected routes require a Bearer token in the `Authorization` header:
+### Moderation
 
+| Methode | Endpoint | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/admin/users` | Admin | Lister les utilisateurs |
+| `GET` | `/admin/threads` | Admin | Lister les discussions pour l'administration |
+| `GET` | `/admin/comments` | Admin | Lister les commentaires pour l'administration |
+| `PATCH` | `/admin/users/:id/ban` | Admin | Bannir ou debannir un utilisateur |
+| `PATCH` | `/admin/users/:id/role` | Admin | Modifier le role d'un utilisateur |
+| `PATCH` | `/admin/threads/:id/pin` | Admin / Moderator | Epingler ou desenpingler une discussion |
+| `PATCH` | `/admin/threads/:id/lock` | Admin / Moderator | Verrouiller ou deverrouiller une discussion |
+
+## Authentification
+
+Les routes protegees utilisent un token Bearer dans l'en-tete `Authorization`.
+
+```http
+Authorization: Bearer <votre_token_jwt>
 ```
-Authorization: Bearer <your_jwt_token>
-```
 
----
+## Exemples de requetes
 
-## Example Requests
+### Inscription
 
-### Register
-```json
+```http
 POST /api/auth/register
+Content-Type: application/json
+```
+
+```json
 {
   "username": "johndoe",
   "email": "john@example.com",
@@ -134,39 +218,49 @@ POST /api/auth/register
 }
 ```
 
-### Create Thread
-```json
+### Creation d'une discussion
+
+```http
 POST /api/threads
+Authorization: Bearer <votre_token_jwt>
+Content-Type: application/json
+```
+
+```json
 {
-  "title": "How do I learn Node.js?",
-  "content": "Looking for resources...",
-  "image_url": "https://media.giphy.com/media/abc123/giphy.gif",
+  "title": "Comment apprendre Node.js ?",
+  "content": "Je cherche de bonnes ressources pour progresser.",
+  "image_url": "https://example.com/image.png",
   "category_id": 1,
   "tags": [2, 5]
 }
 ```
 
-### Post a Reply
-```json
+### Reponse a un commentaire
+
+```http
 POST /api/threads/42/comments
+Authorization: Bearer <votre_token_jwt>
+Content-Type: application/json
+```
+
+```json
 {
-  "content": "Great question!",
-  "image_url": "https://example.com/reply-image.png",
+  "content": "Bonne question, voici une piste.",
+  "image_url": "https://example.com/reponse.png",
   "parent_id": 10
 }
 ```
 
-### Database update for media URLs
-If your database already exists, add these columns once:
+### Vote
 
-```sql
-ALTER TABLE threads ADD COLUMN image_url VARCHAR(500) NULL;
-ALTER TABLE comments ADD COLUMN image_url VARCHAR(500) NULL;
+```http
+POST /api/vote
+Authorization: Bearer <votre_token_jwt>
+Content-Type: application/json
 ```
 
-### Vote
 ```json
-POST /api/vote
 {
   "target_type": "thread",
   "target_id": 7,
@@ -174,3 +268,24 @@ POST /api/vote
 }
 ```
 
+## Deroulement du projet
+
+### Decoupage
+
+Le projet a d'abord ete construit autour d'une base simple : un backend Express, une base MySQL et un frontend connecte. Les fonctionnalites ont ensuite ete ajoutees progressivement en suivant le cahier des charges : authentification, discussions, commentaires, votes, moderation, puis fonctionnalites supplementaires comme les profils, les amis et les signalements.
+
+### Repartition du travail
+
+La repartition initiale etait orientee par domaine : Dylan sur le frontend et Khalil sur le backend. Une fois la base du projet stabilisee, les taches ont ete reparties par fonctionnalite, avec un travail sur des branches GitHub separees pour faciliter l'integration.
+
+### Gestion du temps
+
+Le projet s'est appuye sur une base existante, ce qui a permis de limiter le temps passe sur la mise en place technique. La priorite a donc ete donnee a l'integration des fonctionnalites demandees, puis aux tests manuels et aux ameliorations bonus.
+
+### Priorites
+
+Les fonctionnalites obligatoires ont ete traitees en premier. Les ajouts non obligatoires ont ete integres apres validation du socle principal.
+
+### Documentation
+
+La documentation a ete completee au fur et a mesure de l'avancement. Comme le developpement suivait un ordre defini par le sujet, les sections du README reprennent cette progression : installation, structure, API, exemples et bilan d'organisation.
