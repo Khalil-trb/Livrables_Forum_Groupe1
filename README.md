@@ -55,13 +55,7 @@ JWT_EXPIRES_IN=7d
 ### 3. Creer la base de donnees
 
 ```bash
-mysql -u root -p < schema.sql
-```
-
-Si votre base existe deja et que vous devez appliquer uniquement les ajouts recents, utilisez le fichier :
-
-```bash
-mysql -u root -p forum_db < migration.sql
+mysql -u root -p < database_completed.sql
 ```
 
 ### 4. Lancer le serveur
